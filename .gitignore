@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+node_modules.zip
+
+# Environment & credentials
+.env
+gsuite
+akun_login_join.txt
+
+# Runtime data files
+akun_canva.txt
+akun_gagal.txt
+akun_join_tim.txt
+akun_reset_password.txt
+akun_sudah_login
+akun_terdaftar.txt
+akun_terkait.txt
+result.txt
+
+# HAR captures (sensitive network logs)
+*.har
+
+# Archives
+*.zip
+
+# Screenshots & test images
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Playwright runtime dirs
+.browsers/
+.tmp/
+browser_profile/
