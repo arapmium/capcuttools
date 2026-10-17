@@ -5,10 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "telebot": "node telebot.js",
-    "canva": "node canva.js",
-    "canva:signup": "node canva.js signup",
-    "canva:reset": "node canva.js reset"
+    "telebot": "node telebot.js"
   },
   "dependencies": {
     "chalk": "^4.1.2",

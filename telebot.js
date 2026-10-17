@@ -198,33 +198,10 @@ function mulaiBot() {
         process.env[key] = val;
     }
 
-    // ── Inline Keyboard: MENU UTAMA (Pilih Kategori Platform) ──
+    // ── Inline Keyboard: MENU UTAMA CAPCUT AUTOMATION ──
     function mainMenu() {
         const mode = getBrowserMode();
         const modeLabel = mode === 'biasa' ? '🌐 Biasa' : '🕵️ Incognito';
-        return Markup.inlineKeyboard([
-            [
-                Markup.button.callback('🎬 Menu CapCut Automation', 'open_menu_capcut'),
-            ],
-            [
-                Markup.button.callback('🎨 Menu Canva Automation', 'open_menu_canva'),
-            ],
-            [
-                Markup.button.callback(`🌐 Mode: ${modeLabel}`, 'menu_browser_mode'),
-                Markup.button.callback('🔄 Restart Server', 'menu_restart_server'),
-            ],
-            [
-                Markup.button.callback('ℹ️ Status Bot', 'status'),
-                Markup.button.callback('📋 Lihat Log Terakhir', 'view_log'),
-            ],
-            [
-                Markup.button.callback('🛑 Hentikan Bot', 'stop_bot'),
-            ],
-        ]);
-    }
-
-    // ── Inline Keyboard: KELOMPOK MENU CAPCUT ──
-    function capcutMenu() {
         return Markup.inlineKeyboard([
             [
                 Markup.button.callback('👥 Mulai TEAM (5 Seats)', 'plan_team'),
@@ -258,36 +235,21 @@ function mulaiBot() {
                 Markup.button.callback('❌ Lihat Akun Gagal', 'view_gagal'),
             ],
             [
+                Markup.button.callback(`🌐 Mode: ${modeLabel}`, 'menu_browser_mode'),
+                Markup.button.callback('🔄 Restart Server', 'menu_restart_server'),
+            ],
+            [
+                Markup.button.callback('ℹ️ Status Bot', 'status'),
+                Markup.button.callback('📋 Lihat Log Terakhir', 'view_log'),
+            ],
+            [
                 Markup.button.callback('🛑 Hentikan Bot', 'stop_bot'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu'),
             ],
         ]);
     }
 
-    // ── Inline Keyboard: KELOMPOK MENU CANVA ──
-    function canvaMenu() {
-        return Markup.inlineKeyboard([
-            [
-                Markup.button.callback('🎨 Daftar Akun Canva Baru', 'menu_canva_daftar'),
-                Markup.button.callback('🔑 Reset Sandi Canva', 'menu_canva_reset'),
-            ],
-            [
-                Markup.button.callback('📝 Input Akun Outlook', 'menu_input_canva'),
-                Markup.button.callback('📥 Download Antrean', 'download_canva_queue'),
-            ],
-            [
-                Markup.button.callback('📁 Canva Terdaftar', 'view_canva_terdaftar'),
-                Markup.button.callback('🔐 Canva Ter-Reset', 'view_canva_reset'),
-            ],
-            [
-                Markup.button.callback('❌ Canva Gagal', 'view_canva_gagal'),
-                Markup.button.callback('🗑️ Bersihkan Antrean', 'clear_canva_queue'),
-            ],
-            [
-                Markup.button.callback('🛑 Hentikan Bot', 'stop_bot'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu'),
-            ],
-        ]);
+    function capcutMenu() {
+        return mainMenu();
     }
 
     function countLinesWithAt(filePath) {
@@ -327,67 +289,17 @@ function mulaiBot() {
             `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
             `Pilih fitur otomatisasi CapCut di bawah ini:`;
 
-        return ctx.reply(msg, { parse_mode: 'HTML', ...capcutMenu() });
+        return ctx.reply(msg, { parse_mode: 'HTML', ...mainMenu() });
     }
 
-    function sendCanvaHub(ctx) {
-        delete userState[ctx.chat.id];
-        delete pendingInput[ctx.chat.id];
+    const sendMainMenu = sendCapcutHub;
 
-        const queueCount = countLinesWithAt(path.join(__dirname, 'akun_canva.txt'));
-        const regCount = countLinesWithAt(path.join(__dirname, 'akun_canva_terdaftar.txt'));
-        const resetCount = countLinesWithAt(path.join(__dirname, 'akun_canva_reset.txt'));
-        const failCount = countNonEmptyLines(path.join(__dirname, 'akun_canva_gagal.txt'));
-
-        const msg =
-            `🎨 <b>PUSAT KENDALI OTOMATISASI CANVA</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `📊 <b>Ringkasan Data & Antrean Canva (Outlook):</b>\n` +
-            `• 📂 <b>Antrean Outlook (akun_canva.txt):</b> <b>${queueCount} akun</b>\n` +
-            `• 🎨 <b>Canva Terdaftar:</b> <b>${regCount} akun</b>\n` +
-            `• 🔐 <b>Canva Ter-Reset Sandi:</b> <b>${resetCount} akun</b>\n` +
-            `• ❌ <b>Canva Gagal:</b> <b>${failCount} akun</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `Pilih fitur otomatisasi Canva di bawah ini:`;
-
-        return ctx.reply(msg, { parse_mode: 'HTML', ...canvaMenu() });
-    }
-
-    // ── /start ──
-    bot.start((ctx) => {
-        delete userState[ctx.chat.id];
-        delete pendingInput[ctx.chat.id];
-        const name = ctx.from.first_name || 'User';
-        ctx.reply(
-            `Halo <b>${escapeHtml(name)}</b>! 👋\n` +
-            `Selamat datang di <b>Pusat Kendali Bot Automation</b>.\n\n` +
-            `Silakan pilih kategori layanan yang ingin Anda kelola:\n` +
-            `🎬 <b>Menu CapCut Automation</b> — Checkout Cashier (Team/Pro), Daftar Akun ArapMium, Join Tim, Bind & Reset Password CapCut.\n` +
-            `🎨 <b>Menu Canva Automation</b> — Daftar Akun Canva & Reset Password via Outlook OTP.\n\n` +
-            `Pilih menu di bawah ini:`,
-            { parse_mode: 'HTML', ...mainMenu() }
-        );
-    });
-
-    // ── /menu ──
-    bot.command('menu', (ctx) => {
-        delete userState[ctx.chat.id];
-        delete pendingInput[ctx.chat.id];
-        ctx.reply('🏠 <b>Menu Utama Pusat Kendali</b>\nSilakan pilih platform atau pengaturan:', { parse_mode: 'HTML', ...mainMenu() });
-    });
-
-    // ── /capcut & callback open_menu_capcut ──
-    bot.command('capcut', (ctx) => sendCapcutHub(ctx));
+    // ── /start, /menu, /capcut ──
+    bot.start((ctx) => sendCapcutHub(ctx));
+    bot.command(['menu', 'capcut'], (ctx) => sendCapcutHub(ctx));
     bot.action('open_menu_capcut', async (ctx) => {
         await ctx.answerCbQuery();
         sendCapcutHub(ctx);
-    });
-
-    // ── /canva & callback open_menu_canva ──
-    bot.command('canva', (ctx) => sendCanvaHub(ctx));
-    bot.action('open_menu_canva', async (ctx) => {
-        await ctx.answerCbQuery();
-        sendCanvaHub(ctx);
     });
 
     // ── /daftar & /register ──
@@ -426,8 +338,7 @@ function mulaiBot() {
                 Markup.button.callback('📥 Download .txt', 'download_daftar'),
             ],
             [
-                Markup.button.callback('🎬 Menu CapCut', 'open_menu_capcut'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu')
+                Markup.button.callback('⬅️ Menu Utama', 'back_menu')
             ]
         ]);
 
@@ -484,8 +395,7 @@ function mulaiBot() {
                         Markup.button.callback('🔑 Masuk + Join Tim', 'menu_login_join'),
                     ],
                     [
-                        Markup.button.callback('🎬 Menu CapCut', 'open_menu_capcut'),
-                        Markup.button.callback('🏠 Menu Utama', 'back_menu')
+                        Markup.button.callback('⬅️ Menu Utama', 'back_menu')
                     ]
                 ])
             }
@@ -1156,8 +1066,7 @@ function mulaiBot() {
                 }
             }
             finishButtons.push([
-                Markup.button.callback('🎬 Menu CapCut', 'open_menu_capcut'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu')
+                Markup.button.callback('⬅️ Menu Utama', 'back_menu')
             ]);
 
             // Batasi panjang jika melebihi limit Telegram (4096 char)
@@ -1185,7 +1094,7 @@ function mulaiBot() {
                         fallback += `${idx + 1}. ${item.email}|${item.password}\n`;
                     });
                 }
-                ctx.reply(fallback, capcutMenu()).catch(() => {});
+                ctx.reply(fallback, mainMenu()).catch(() => {});
             });
         });
 
@@ -1193,314 +1102,6 @@ function mulaiBot() {
             addLog(`[FATAL] ${err.message}`);
             botProcess = null;
             ctx.reply(`❌ <b>Gagal menjalankan bot:</b> ${escapeHtml(err.message)}`, { parse_mode: 'HTML' }).catch(() => {});
-        });
-    }
-
-    // ── Helper Simpan Akun Canva ──
-    function saveCanvaAccounts(ctx, accountsList, mode) {
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-
-        if (mode === 'replace') {
-            fs.writeFileSync(canvaPath, accountsList.join('\n') + '\n', 'utf8');
-            return ctx.reply(
-                `✅ <b>Berhasil Mengganti Semua Akun Canva!</b>\n\n` +
-                `• Total akun baru di <code>akun_canva.txt</code>: <b>${accountsList.length} akun</b>\n\n` +
-                `Sekarang Anda bisa langsung memilih mode untuk memulai bot:`,
-                {
-                    parse_mode: 'HTML',
-                    ...canvaMenu()
-                }
-            );
-        } else {
-            // Append
-            let existingContent = fs.existsSync(canvaPath) ? fs.readFileSync(canvaPath, 'utf8') : '';
-            if (existingContent && !existingContent.endsWith('\n')) existingContent += '\n';
-            fs.writeFileSync(canvaPath, existingContent + accountsList.join('\n') + '\n', 'utf8');
-
-            const allAccounts = fs.readFileSync(canvaPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'));
-            return ctx.reply(
-                `✅ <b>Berhasil Menambahkan Akun Canva!</b>\n\n` +
-                `• Akun ditambahkan: <b>${accountsList.length} akun</b>\n` +
-                `• Total akun di antrean sekarang: <b>${allAccounts.length} akun</b>\n\n` +
-                `Silakan pilih mode untuk menjalankan bot:`,
-                {
-                    parse_mode: 'HTML',
-                    ...canvaMenu()
-                }
-            );
-        }
-    }
-
-    // ── Fungsi untuk menjalankan script Canva (Sign Up & Reset) ──
-    function runCanva(ctx, action, count = 0, options = {}) {
-        if (botProcess) {
-            return ctx.reply('⚠️ Proses bot sedang berjalan! Hentikan dulu jika ingin memulai baru.');
-        }
-
-        const isReset = (action === 'reset' || action.includes('reset'));
-        const modeLabel = isReset ? '🔑 RESET PASSWORD CANVA' : '🎨 DAFTAR AKUN BARU CANVA';
-        const targetCount = count ? count : 0;
-        const countText = targetCount > 0 ? `${targetCount} akun` : 'Semua akun';
-        const customPass = process.env.canva_password || process.env.new_password || process.env.daftar_password || 'masuk123';
-
-        let descText = isReset
-            ? `Bot akan membuka halaman lupa sandi Canva, menarik link/kode reset dari inbox Outlook via outlookreader.my.id, dan memasang password baru (${customPass}).`
-            : `Bot akan mendaftarkan akun Canva baru via opsi Continue with email, menarik kode OTP 6-digit dari inbox Outlook via outlookreader.my.id, dan menyimpan akun ke akun_canva_terdaftar.txt.`;
-
-        ctx.reply(
-            `⏳ <b>Memulai Otomatisasi Canva...</b>\n\n` +
-            `• <b>Mode:</b> ${modeLabel}\n` +
-            `• <b>Target:</b> ${countText}\n` +
-            `• <b>Password:</b> <code>${escapeHtml(customPass)}</code>\n\n` +
-            `<i>${descText}</i>`,
-            { parse_mode: 'HTML' }
-        ).catch(() => {});
-
-        logBuffer = [];
-        addLog(`[START] Canva dimulai (${modeLabel} | ${countText}) pada ${new Date().toLocaleString('id-ID')}`);
-
-        const sessionSuccess = [];
-        const sessionFailed = [];
-        const startTime = Date.now();
-
-        const canvaEnv = {
-            ...process.env,
-            CANVA_ACTION: isReset ? 'reset' : 'signup',
-            CANVA_MAX: targetCount > 0 ? String(targetCount) : '0',
-            ...(options.accountsFile ? { CANVA_ACCOUNTS_FILE: options.accountsFile } : {}),
-        };
-
-        botProcess = spawn('node', ['canva.js', isReset ? 'reset' : 'signup', String(targetCount)], {
-            cwd: __dirname,
-            env: canvaEnv,
-        });
-
-        let stdoutBuffer = '';
-
-        botProcess.stdout.on('data', (data) => {
-            stdoutBuffer += data.toString();
-            const lines = stdoutBuffer.split('\n');
-            stdoutBuffer = lines.pop();
-
-            for (const rawLine of lines) {
-                const line = rawLine.trim();
-                if (!line) continue;
-                console.log(`[CANVA] ${line}`);
-                addLog(line);
-
-                // 1. Deteksi Canva Register Berhasil
-                if (line.includes('###TELE_CANVA_REGISTER_SUCCESS###')) {
-                    try {
-                        const parts = line.split('###').filter(Boolean);
-                        if (parts.length >= 3) {
-                            const cEmail = parts[1];
-                            const cPass = parts[2];
-                            const cUrl = parts.length >= 4 ? parts[3] : '';
-
-                            sessionSuccess.push({
-                                type: 'signup',
-                                email: cEmail,
-                                password: cPass,
-                                url: cUrl,
-                            });
-
-                            const outText = `${cEmail}|${cPass}`;
-                            ctx.reply(
-                                `🎨 <b>AKUN CANVA BERHASIL DIDAFTARKAN!</b>\n\n` +
-                                `📧 <b>Email:</b> <code>${escapeHtml(cEmail)}</code>\n` +
-                                `🔑 <b>Password:</b> <code>${escapeHtml(cPass)}</code>\n\n` +
-                                `📋 <b>Format Output:</b>\n<code>${escapeHtml(outText)}</code>\n\n` +
-                                `📁 <i>Tersimpan di: <code>akun_canva_terdaftar.txt</code></i>`,
-                                {
-                                    parse_mode: 'HTML',
-                                    ...Markup.inlineKeyboard([
-                                        [Markup.button.callback('📥 Download akun_canva_terdaftar.txt', 'download_canva_daftar')]
-                                    ])
-                                }
-                            ).catch((err) => {
-                                console.error('[TELEGRAM ERR] Gagal kirim notif canva register:', err.message);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('[TELEGRAM ERR] Parse canva register error:', e.message);
-                    }
-                }
-
-                // 2. Deteksi Canva Reset Password Berhasil
-                if (line.includes('###TELE_CANVA_RESET_SUCCESS###')) {
-                    try {
-                        const parts = line.split('###').filter(Boolean);
-                        if (parts.length >= 3) {
-                            const rEmail = parts[1];
-                            const rPass = parts[2];
-
-                            sessionSuccess.push({
-                                type: 'reset',
-                                email: rEmail,
-                                password: rPass,
-                            });
-
-                            const outText = `${rEmail}|${rPass}`;
-                            ctx.reply(
-                                `🔑 <b>PASSWORD CANVA BERHASIL DI-RESET!</b>\n\n` +
-                                `📧 <b>Email:</b> <code>${escapeHtml(rEmail)}</code>\n` +
-                                `🔑 <b>Password Baru:</b> <code>${escapeHtml(rPass)}</code>\n\n` +
-                                `📋 <b>Format Output:</b>\n<code>${escapeHtml(outText)}</code>\n\n` +
-                                `📁 <i>Tersimpan di: <code>akun_canva_reset.txt</code></i>`,
-                                {
-                                    parse_mode: 'HTML',
-                                    ...Markup.inlineKeyboard([
-                                        [Markup.button.callback('📥 Download akun_canva_reset.txt', 'download_canva_reset')]
-                                    ])
-                                }
-                            ).catch((err) => {
-                                console.error('[TELEGRAM ERR] Gagal kirim notif canva reset:', err.message);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('[TELEGRAM ERR] Parse canva reset error:', e.message);
-                    }
-                }
-
-                // 3. Deteksi Canva Gagal
-                if (line.includes('###TELE_CANVA_GAGAL###')) {
-                    try {
-                        const parts = line.split('###').filter(Boolean);
-                        if (parts.length >= 3) {
-                            const fEmail = parts[1];
-                            const fError = parts[2].trim();
-                            const fScreenshot = parts.length >= 4 ? parts[3].trim() : '';
-
-                            sessionFailed.push({
-                                email: fEmail,
-                                error: fError,
-                                screenshot: fScreenshot,
-                            });
-
-                            const failCaption = `❌ <b>CANVA GAGAL DIPROSES</b>\n\n` +
-                                `📧 <b>Email:</b> <code>${escapeHtml(fEmail)}</code>\n` +
-                                `⚠️ <b>Alasan:</b> <i>${escapeHtml(fError.slice(0, 200))}</i>\n\n` +
-                                `📁 <i>Dicatat ke: <code>akun_canva_gagal.txt</code></i>`;
-
-                            if (fScreenshot && fs.existsSync(fScreenshot)) {
-                                const sendPhotoWithFallback = async () => {
-                                    try {
-                                        await ctx.replyWithPhoto(
-                                            { source: fs.createReadStream(fScreenshot) },
-                                            { caption: failCaption.slice(0, 990), parse_mode: 'HTML' }
-                                        );
-                                    } catch (streamErr) {
-                                        try {
-                                            await ctx.replyWithPhoto(
-                                                { source: fs.readFileSync(fScreenshot) },
-                                                { caption: failCaption.slice(0, 990), parse_mode: 'HTML' }
-                                            );
-                                        } catch (_) {
-                                            await ctx.reply(failCaption, { parse_mode: 'HTML' });
-                                        }
-                                    }
-                                };
-                                sendPhotoWithFallback().catch(() => {});
-                            } else {
-                                ctx.reply(failCaption, { parse_mode: 'HTML' }).catch(() => {});
-                            }
-                        }
-                    } catch (e) {
-                        console.error('[TELEGRAM ERR] Parse canva gagal error:', e.message);
-                    }
-                }
-            }
-        });
-
-        botProcess.stderr.on('data', (data) => {
-            const lines = data.toString().split('\n').filter(l => l.trim());
-            for (const line of lines) {
-                console.error(`[CANVA ERR] ${line}`);
-                addLog(`[ERR] ${line}`);
-            }
-        });
-
-        botProcess.on('close', (code) => {
-            if (stdoutBuffer && stdoutBuffer.trim()) {
-                const line = stdoutBuffer.trim();
-                console.log(`[CANVA] ${line}`);
-                addLog(line);
-            }
-
-            const durationSec = Math.round((Date.now() - startTime) / 1000);
-            const durationStr = durationSec > 60
-                ? `${Math.floor(durationSec / 60)} menit ${durationSec % 60} detik`
-                : `${durationSec} detik`;
-
-            const totalSuccess = sessionSuccess.length;
-            const totalFailed = sessionFailed.length;
-            const totalProcessed = totalSuccess + totalFailed;
-
-            const logMsg = `Canva selesai dengan kode ${code} (Berhasil: ${totalSuccess}, Gagal: ${totalFailed}, Durasi: ${durationStr})`;
-            console.log(`[CANVA] ${logMsg}`);
-            addLog(`[SELESAI] ${logMsg}`);
-            botProcess = null;
-
-            if (totalProcessed === 0) {
-                return ctx.reply(
-                    `ℹ️ <b>PEMBERITAHUAN</b>\n━━━━━━━━━━━━━━━━━━━━\n` +
-                    `Tidak ada akun Canva yang diproses atau daftar antrean kosong.\n\n` +
-                    `Silakan gunakan menu <b>📝 Input Akun Canva</b> untuk menambahkan akun Outlook.`,
-                    { parse_mode: 'HTML', ...canvaMenu() }
-                ).catch(() => {});
-            }
-
-            let reportMsg = `📊 <b>LAPORAN HASIL OTOMATISASI CANVA</b>\n` +
-                            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                            `⚙️ <b>Mode:</b> ${modeLabel}\n` +
-                            `⏱️ <b>Durasi:</b> ${durationStr}\n` +
-                            `🎯 <b>Total Diproses:</b> ${totalProcessed} akun\n` +
-                            `✅ <b>Berhasil:</b> ${totalSuccess} akun\n` +
-                            `❌ <b>Gagal:</b> ${totalFailed} akun\n` +
-                            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-            if (totalSuccess > 0) {
-                reportMsg += `✅ <b>DAFTAR AKUN BERHASIL (${totalSuccess}):</b>\n`;
-                sessionSuccess.forEach((item, idx) => {
-                    reportMsg += `${idx + 1}. <code>${escapeHtml(item.email)}|${escapeHtml(item.password)}</code>\n`;
-                });
-                const destFile = isReset ? 'akun_canva_reset.txt' : 'akun_canva_terdaftar.txt';
-                reportMsg += `\n📁 <i>Tersimpan di: <code>${destFile}</code></i>\n\n`;
-            }
-
-            if (totalFailed > 0) {
-                reportMsg += `❌ <b>DAFTAR AKUN GAGAL (${totalFailed}):</b>\n`;
-                sessionFailed.forEach((item, idx) => {
-                    reportMsg += `${idx + 1}. <code>${escapeHtml(item.email)}</code>: <i>${escapeHtml(item.error.slice(0, 80))}</i>\n`;
-                });
-                reportMsg += `\n📁 <i>Dicatat di: <code>akun_canva_gagal.txt</code></i>\n\n`;
-            }
-
-            const finishButtons = [];
-            if (isReset) {
-                if (totalSuccess > 0) finishButtons.push([Markup.button.callback('📥 Download akun_canva_reset.txt', 'download_canva_reset')]);
-            } else {
-                if (totalSuccess > 0) finishButtons.push([Markup.button.callback('📥 Download akun_canva_terdaftar.txt', 'download_canva_daftar')]);
-            }
-            finishButtons.push([
-                Markup.button.callback('🎨 Menu Canva', 'open_menu_canva'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu')
-            ]);
-
-            if (reportMsg.length > 3900) {
-                reportMsg = reportMsg.slice(0, 3850) + '\n\n<i>...(laporan dipotong karena batas karakter Telegram)...</i>';
-            }
-
-            ctx.reply(reportMsg, {
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard(finishButtons)
-            }).catch(() => {});
-        });
-
-        botProcess.on('error', (err) => {
-            addLog(`[FATAL] ${err.message}`);
-            botProcess = null;
-            ctx.reply(`❌ <b>Gagal menjalankan script Canva:</b> ${escapeHtml(err.message)}`, { parse_mode: 'HTML' }).catch(() => {});
         });
     }
 
@@ -1560,8 +1161,7 @@ function mulaiBot() {
                 Markup.button.callback('📥 Download .txt', 'download_daftar'),
             ],
             [
-                Markup.button.callback('⬅️ Menu CapCut', 'open_menu_capcut'),
-                Markup.button.callback('🏠 Menu Utama', 'back_menu')
+                Markup.button.callback('⬅️ Menu Utama', 'back_menu')
             ]
         ]);
 
@@ -1574,401 +1174,6 @@ function mulaiBot() {
         const planMode = ctx.match[1];
         const count = parseInt(ctx.match[2], 10);
         runBot(ctx, planMode, count);
-    });
-
-    // ── ACTION: Menu Daftar Canva ──
-    bot.action('menu_canva_daftar', async (ctx) => {
-        await ctx.answerCbQuery();
-        if (botProcess) {
-            return ctx.reply('⚠️ Bot sedang berjalan! Hentikan terlebih dahulu jika ingin memulai baru.');
-        }
-
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-        const regPath = path.join(__dirname, 'akun_canva_terdaftar.txt');
-        const queueAccounts = fs.existsSync(canvaPath)
-            ? fs.readFileSync(canvaPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'))
-            : [];
-        const regCount = fs.existsSync(regPath)
-            ? fs.readFileSync(regPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length
-            : 0;
-
-        const defaultPass = process.env.canva_password || process.env.new_password || process.env.daftar_password || 'masuk123';
-
-        if (queueAccounts.length === 0) {
-            return ctx.reply(
-                `⚠️ <b>Antrean Akun Canva Kosong!</b>\n\n` +
-                `File <code>akun_canva.txt</code> belum memiliki akun Outlook untuk didaftarkan.\n\n` +
-                `Silakan gunakan menu <b>📝 Input Akun Canva</b> untuk memasukkan akun Outlook (format: <code>email|pass|token|id</code> atau <code>email|pass</code>).`,
-                {
-                    parse_mode: 'HTML',
-                    ...Markup.inlineKeyboard([
-                        [Markup.button.callback('📝 Input Akun Canva Sekarang', 'menu_input_canva')],
-                        [Markup.button.callback('📁 Lihat Akun Terdaftar', 'view_canva_terdaftar')],
-                        [
-                            Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                            Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                        ]
-                    ])
-                }
-            );
-        }
-
-        const text =
-            `🎨 <b>DAFTAR AKUN BARU CANVA (VIA OUTLOOK OTP)</b>\n\n` +
-            `Fitur ini membuat akun Canva baru via opsi <b>"Continue with email"</b>, menarik kode OTP 6-digit dari inbox Outlook via <code>outlookreader.my.id</code>, dan memasang kata sandi.\n\n` +
-            `• <b>Default Password:</b> <code>${escapeHtml(defaultPass)}</code>\n` +
-            `• <b>Format Output:</b> <code>email|password</code>\n` +
-            `• <b>Tersedia di Antrean:</b> <b>${queueAccounts.length} akun</b>\n` +
-            `• <b>Sudah Terdaftar:</b> ${regCount} akun\n\n` +
-            `<b>Pilih jumlah akun yang ingin didaftarkan:</b>`;
-
-        const maxSelect = Math.min(queueAccounts.length, 5);
-        const btns = [];
-        for (let i = 1; i <= maxSelect; i++) {
-            btns.push(Markup.button.callback(`${i} Akun`, `run_canva_signup_${i}`));
-        }
-        if (queueAccounts.length > 5) {
-            btns.push(Markup.button.callback(`Semua (${queueAccounts.length})`, `run_canva_signup_${queueAccounts.length}`));
-        }
-
-        const rows = [];
-        while (btns.length > 0) {
-            rows.push(btns.splice(0, 3));
-        }
-        rows.push([
-            Markup.button.callback('📁 Canva Terdaftar', 'view_canva_terdaftar'),
-            Markup.button.callback('📝 Input Akun', 'menu_input_canva')
-        ]);
-        rows.push([
-            Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-            Markup.button.callback('🏠 Menu Utama', 'back_menu')
-        ]);
-
-        ctx.reply(text, { parse_mode: 'HTML', ...Markup.inlineKeyboard(rows) });
-    });
-
-    // ── ACTION: Menu Reset Canva ──
-    bot.action('menu_canva_reset', async (ctx) => {
-        await ctx.answerCbQuery();
-        if (botProcess) {
-            return ctx.reply('⚠️ Bot sedang berjalan! Hentikan terlebih dahulu jika ingin memulai baru.');
-        }
-
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-        const resetPath = path.join(__dirname, 'akun_canva_reset.txt');
-        const queueAccounts = fs.existsSync(canvaPath)
-            ? fs.readFileSync(canvaPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'))
-            : [];
-        const resetCount = fs.existsSync(resetPath)
-            ? fs.readFileSync(resetPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length
-            : 0;
-
-        const defaultPass = process.env.canva_password || process.env.new_password || process.env.daftar_password || 'masuk123';
-
-        if (queueAccounts.length === 0) {
-            return ctx.reply(
-                `⚠️ <b>Antrean Akun Canva Kosong!</b>\n\n` +
-                `File <code>akun_canva.txt</code> belum memiliki akun Outlook untuk di-reset.\n\n` +
-                `Silakan gunakan menu <b>📝 Input Akun Canva</b> untuk memasukkan akun Outlook.`,
-                {
-                    parse_mode: 'HTML',
-                    ...Markup.inlineKeyboard([
-                        [Markup.button.callback('📝 Input Akun Canva Sekarang', 'menu_input_canva')],
-                        [Markup.button.callback('🔐 Lihat Canva Ter-Reset', 'view_canva_reset')],
-                        [
-                            Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                            Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                        ]
-                    ])
-                }
-            );
-        }
-
-        const text =
-            `🔑 <b>RESET PASSWORD AKUN CANVA</b>\n\n` +
-            `Fitur ini membuka halaman lupa sandi Canva, menarik link/kode reset dari inbox Outlook via <code>outlookreader.my.id</code>, dan memasang kata sandi baru.\n\n` +
-            `• <b>Password Baru:</b> <code>${escapeHtml(defaultPass)}</code>\n` +
-            `• <b>Format Output:</b> <code>email|new_password</code>\n` +
-            `• <b>Tersedia di Antrean:</b> <b>${queueAccounts.length} akun</b>\n` +
-            `• <b>Sudah Di-reset:</b> ${resetCount} akun\n\n` +
-            `<b>Pilih jumlah akun yang ingin di-reset:</b>`;
-
-        const maxSelect = Math.min(queueAccounts.length, 5);
-        const btns = [];
-        for (let i = 1; i <= maxSelect; i++) {
-            btns.push(Markup.button.callback(`${i} Akun`, `run_canva_reset_${i}`));
-        }
-        if (queueAccounts.length > 5) {
-            btns.push(Markup.button.callback(`Semua (${queueAccounts.length})`, `run_canva_reset_${queueAccounts.length}`));
-        }
-
-        const rows = [];
-        while (btns.length > 0) {
-            rows.push(btns.splice(0, 3));
-        }
-        rows.push([
-            Markup.button.callback('🔐 Canva Ter-Reset', 'view_canva_reset'),
-            Markup.button.callback('📝 Input Akun', 'menu_input_canva')
-        ]);
-        rows.push([
-            Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-            Markup.button.callback('🏠 Menu Utama', 'back_menu')
-        ]);
-
-        ctx.reply(text, { parse_mode: 'HTML', ...Markup.inlineKeyboard(rows) });
-    });
-
-    // ── ACTION: Run Canva Action Callback ──
-    bot.action(/^run_canva_(signup|reset)_(\d+)$/, async (ctx) => {
-        await ctx.answerCbQuery();
-        const action = ctx.match[1];
-        const count = parseInt(ctx.match[2], 10);
-        runCanva(ctx, action, count);
-    });
-
-    // ── ACTION: Menu Input Akun Canva ──
-    bot.action('menu_input_canva', async (ctx) => {
-        await ctx.answerCbQuery();
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-        const count = fs.existsSync(canvaPath)
-            ? fs.readFileSync(canvaPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length
-            : 0;
-
-        ctx.reply(
-            `📝 <b>Pusat Pengelolaan Akun Canva (Outlook)</b>\n\n` +
-            `• <b>Jumlah Akun di Antrean:</b> <b>${count} akun</b>\n` +
-            `• <b>File Database:</b> <code>akun_canva.txt</code>\n\n` +
-            `<b>Format yang Didukung:</b>\n` +
-            `1. <code>email|password|refresh_token|client_id</code> <i>(OAuth2 Recommended)</i>\n` +
-            `2. <code>email|password|token</code>\n` +
-            `3. <code>email|password</code>\n\n` +
-            `Pilih aksi di bawah ini:`,
-            {
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('➕ Tambah Akun (Append)', 'set_canva_input_append')],
-                    [Markup.button.callback('🔄 Ganti Semua Akun (Replace)', 'set_canva_input_replace')],
-                    [Markup.button.callback('📥 Download akun_canva.txt', 'download_canva_queue')],
-                    [Markup.button.callback('🗑️ Bersihkan Antrean', 'clear_canva_queue')],
-                    [
-                        Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                        Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                    ]
-                ])
-            }
-        );
-    });
-
-    bot.action('set_canva_input_append', async (ctx) => {
-        await ctx.answerCbQuery();
-        userState[ctx.chat.id] = { step: 'waiting_canva_accounts', mode: 'append' };
-        ctx.reply(
-            `➕ <b>Mode Tambah Akun Canva (Append) Aktif</b>\n\n` +
-            `Kirimkan teks daftar akun Outlook/Hotmail ke chat ini sekarang.\n\n` +
-            `<b>Format per baris:</b>\n` +
-            `<code>email|password|token|id</code> atau <code>email|password</code>\n\n` +
-            `<i>(Bisa kirim teks atau upload file dokumen .txt)\n` +
-            `Ketik /cancel atau /batal untuk membatalkan.</i>`,
-            { parse_mode: 'HTML' }
-        );
-    });
-
-    bot.action('set_canva_input_replace', async (ctx) => {
-        await ctx.answerCbQuery();
-        userState[ctx.chat.id] = { step: 'waiting_canva_accounts', mode: 'replace' };
-        ctx.reply(
-            `🔄 <b>Mode Ganti Semua Akun Canva (Replace) Aktif</b>\n\n` +
-            `⚠️ <i>Perhatian: Daftar akun lama di <code>akun_canva.txt</code> akan ditimpa!</i>\n\n` +
-            `Kirimkan teks daftar akun baru ke chat ini sekarang.\n` +
-            `Format per baris: <code>email|pass|token|id</code> atau <code>email|pass</code>\n\n` +
-            `<i>Ketik /cancel atau /batal untuk membatalkan.</i>`,
-            { parse_mode: 'HTML' }
-        );
-    });
-
-    bot.action('download_canva_queue', async (ctx) => {
-        await ctx.answerCbQuery();
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-        if (fs.existsSync(canvaPath) && fs.readFileSync(canvaPath, 'utf8').trim()) {
-            const count = fs.readFileSync(canvaPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length;
-            await ctx.replyWithDocument(
-                { source: canvaPath, filename: 'akun_canva.txt' },
-                { caption: `📋 Antrean akun Canva Outlook (${count} akun)` }
-            );
-        } else {
-            ctx.reply('ℹ️ File akun_canva.txt masih kosong.');
-        }
-    });
-
-    bot.action('clear_canva_queue', async (ctx) => {
-        await ctx.answerCbQuery();
-        const canvaPath = path.join(__dirname, 'akun_canva.txt');
-        if (fs.existsSync(canvaPath)) {
-            fs.writeFileSync(canvaPath, '', 'utf8');
-        }
-        ctx.reply('🗑️ <b>Antrean akun_canva.txt berhasil dikosongkan!</b>', { parse_mode: 'HTML', ...canvaMenu() });
-    });
-
-    // ── ACTION: Lihat Akun Canva Terdaftar ──
-    bot.action('view_canva_terdaftar', async (ctx) => {
-        await ctx.answerCbQuery();
-        const regPath = path.join(__dirname, 'akun_canva_terdaftar.txt');
-        if (!fs.existsSync(regPath)) {
-            return ctx.reply('ℹ️ Belum ada akun Canva yang terdaftar. File akun_canva_terdaftar.txt belum dibuat.', canvaMenu());
-        }
-        const lines = fs.readFileSync(regPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'));
-        if (lines.length === 0) {
-            return ctx.reply('ℹ️ File akun_canva_terdaftar.txt masih kosong.', canvaMenu());
-        }
-        const total = lines.length;
-        const recent = lines.slice(-10);
-        const text =
-            `🎨 <b>Daftar Akun Canva yang Berhasil Didaftarkan:</b>\n` +
-            `• Total akun terdaftar: <b>${total} akun</b>\n\n` +
-            `<b>10 Akun Terakhir:</b>\n` +
-            recent.map((l, i) => `${total - recent.length + 1 + i}. <code>${escapeHtml(l)}</code>`).join('\n') +
-            `\n\n📁 <i>File: <code>akun_canva_terdaftar.txt</code></i>`;
-
-        ctx.reply(text, {
-            parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('📥 Download akun_canva_terdaftar.txt', 'download_canva_daftar')],
-                [Markup.button.callback('🗑️ Bersihkan Riwayat Terdaftar', 'clear_canva_daftar')],
-                [
-                    Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                    Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                ],
-            ])
-        });
-    });
-
-    bot.action('download_canva_daftar', async (ctx) => {
-        await ctx.answerCbQuery();
-        const regPath = path.join(__dirname, 'akun_canva_terdaftar.txt');
-        if (fs.existsSync(regPath) && fs.readFileSync(regPath, 'utf8').trim()) {
-            const count = fs.readFileSync(regPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length;
-            await ctx.replyWithDocument(
-                { source: regPath, filename: 'akun_canva_terdaftar.txt' },
-                { caption: `🎨 Daftar akun Canva terdaftar (${count} akun | format: email|password)` }
-            );
-        } else {
-            ctx.reply('ℹ️ File akun_canva_terdaftar.txt kosong.');
-        }
-    });
-
-    bot.action('clear_canva_daftar', async (ctx) => {
-        await ctx.answerCbQuery();
-        const regPath = path.join(__dirname, 'akun_canva_terdaftar.txt');
-        if (fs.existsSync(regPath)) {
-            fs.writeFileSync(regPath, '', 'utf8');
-        }
-        ctx.reply('🗑️ <b>Riwayat akun_canva_terdaftar.txt berhasil dibersihkan!</b>', { parse_mode: 'HTML', ...canvaMenu() });
-    });
-
-    // ── ACTION: Lihat Akun Canva Reset ──
-    bot.action('view_canva_reset', async (ctx) => {
-        await ctx.answerCbQuery();
-        const resetPath = path.join(__dirname, 'akun_canva_reset.txt');
-        if (!fs.existsSync(resetPath)) {
-            return ctx.reply('ℹ️ Belum ada akun Canva yang di-reset. File akun_canva_reset.txt belum dibuat.', canvaMenu());
-        }
-        const lines = fs.readFileSync(resetPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'));
-        if (lines.length === 0) {
-            return ctx.reply('ℹ️ File akun_canva_reset.txt masih kosong.', canvaMenu());
-        }
-        const total = lines.length;
-        const recent = lines.slice(-10);
-        const text =
-            `🔑 <b>Daftar Akun Canva yang Berhasil Di-Reset:</b>\n` +
-            `• Total akun di-reset: <b>${total} akun</b>\n\n` +
-            `<b>10 Akun Terakhir:</b>\n` +
-            recent.map((l, i) => `${total - recent.length + 1 + i}. <code>${escapeHtml(l)}</code>`).join('\n') +
-            `\n\n📁 <i>File: <code>akun_canva_reset.txt</code></i>`;
-
-        ctx.reply(text, {
-            parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('📥 Download akun_canva_reset.txt', 'download_canva_reset')],
-                [Markup.button.callback('🗑️ Bersihkan Riwayat Reset', 'clear_canva_reset')],
-                [
-                    Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                    Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                ],
-            ])
-        });
-    });
-
-    bot.action('download_canva_reset', async (ctx) => {
-        await ctx.answerCbQuery();
-        const resetPath = path.join(__dirname, 'akun_canva_reset.txt');
-        if (fs.existsSync(resetPath) && fs.readFileSync(resetPath, 'utf8').trim()) {
-            const count = fs.readFileSync(resetPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@')).length;
-            await ctx.replyWithDocument(
-                { source: resetPath, filename: 'akun_canva_reset.txt' },
-                { caption: `🔑 Daftar akun Canva di-reset (${count} akun | format: email|new_password)` }
-            );
-        } else {
-            ctx.reply('ℹ️ File akun_canva_reset.txt kosong.');
-        }
-    });
-
-    bot.action('clear_canva_reset', async (ctx) => {
-        await ctx.answerCbQuery();
-        const resetPath = path.join(__dirname, 'akun_canva_reset.txt');
-        if (fs.existsSync(resetPath)) {
-            fs.writeFileSync(resetPath, '', 'utf8');
-        }
-        ctx.reply('🗑️ <b>Riwayat akun_canva_reset.txt berhasil dibersihkan!</b>', { parse_mode: 'HTML', ...canvaMenu() });
-    });
-
-    // ── ACTION: Lihat Akun Canva Gagal ──
-    bot.action('view_canva_gagal', async (ctx) => {
-        await ctx.answerCbQuery();
-        const gagalPath = path.join(__dirname, 'akun_canva_gagal.txt');
-        if (!fs.existsSync(gagalPath) || !fs.readFileSync(gagalPath, 'utf8').trim()) {
-            return ctx.reply('✅ <b>Belum ada akun Canva yang gagal!</b>', { parse_mode: 'HTML', ...canvaMenu() });
-        }
-        const lines = fs.readFileSync(gagalPath, 'utf8').split('\n').filter(l => l.trim());
-        const preview = lines.slice(-5).map((l, i) => `${lines.length - 4 + i}. <code>${escapeHtml(l.slice(0, 80))}</code>`).join('\n');
-
-        ctx.reply(
-            `❌ <b>Daftar Akun Canva Gagal:</b>\n` +
-            `• Total gagal: <b>${lines.length} akun</b>\n\n` +
-            `<b>5 Terakhir:</b>\n${preview}`,
-            {
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('📥 Download akun_canva_gagal.txt', 'download_canva_gagal')],
-                    [Markup.button.callback('🗑️ Bersihkan File Gagal', 'clear_canva_gagal')],
-                    [
-                        Markup.button.callback('⬅️ Menu Canva', 'open_menu_canva'),
-                        Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                    ],
-                ])
-            }
-        );
-    });
-
-    bot.action('download_canva_gagal', async (ctx) => {
-        await ctx.answerCbQuery();
-        const gagalPath = path.join(__dirname, 'akun_canva_gagal.txt');
-        if (fs.existsSync(gagalPath) && fs.readFileSync(gagalPath, 'utf8').trim()) {
-            await ctx.replyWithDocument(
-                { source: gagalPath, filename: 'akun_canva_gagal.txt' },
-                { caption: '❌ Daftar akun Canva yang gagal diproses' }
-            );
-        } else {
-            ctx.reply('✅ File akun_canva_gagal.txt kosong.');
-        }
-    });
-
-    bot.action('clear_canva_gagal', async (ctx) => {
-        await ctx.answerCbQuery();
-        const gagalPath = path.join(__dirname, 'akun_canva_gagal.txt');
-        if (fs.existsSync(gagalPath)) {
-            fs.writeFileSync(gagalPath, '', 'utf8');
-        }
-        ctx.reply('🗑️ <b>File akun_canva_gagal.txt berhasil dibersihkan!</b>', { parse_mode: 'HTML', ...canvaMenu() });
     });
 
     // ── ACTION: Menu Daftar + Join Tim ──
@@ -2632,14 +1837,6 @@ function mulaiBot() {
         return saveAccounts(ctx, valid, 'replace');
     });
 
-    bot.action('save_pending_canva', async (ctx) => {
-        await ctx.answerCbQuery();
-        const valid = pendingInput[ctx.chat.id];
-        delete pendingInput[ctx.chat.id];
-        if (!valid || valid.length === 0) return ctx.reply('⚠️ Tidak ada data akun pending.');
-        return saveCanvaAccounts(ctx, valid, 'append');
-    });
-
     bot.action('cancel_pending', async (ctx) => {
         await ctx.answerCbQuery();
         delete pendingInput[ctx.chat.id];
@@ -2677,10 +1874,7 @@ function mulaiBot() {
                     [Markup.button.callback('📝 Input / Tambah Akun', 'menu_input_gsuite')],
                     [Markup.button.callback('📥 Download File gsuite', 'download_gsuite')],
                     [Markup.button.callback('🗑️ Reset Riwayat Selesai', 'clear_history')],
-                    [
-                        Markup.button.callback('⬅️ Menu CapCut', 'open_menu_capcut'),
-                        Markup.button.callback('🏠 Menu Utama', 'back_menu')
-                    ],
+                    [Markup.button.callback('⬅️ Menu Utama', 'back_menu')],
                 ])
             }
         );
@@ -2725,14 +1919,6 @@ function mulaiBot() {
                 return ctx.reply('⚠️ Tidak ada akun yang valid (harus mengandung email @). Silakan ketik format <code>email|pass</code> atau ketik /batal.', { parse_mode: 'HTML' });
             }
             return saveAccounts(ctx, validAccounts, state.mode);
-        }
-
-        if (state && state.step === 'waiting_canva_accounts') {
-            delete userState[ctx.chat.id];
-            if (validAccounts.length === 0) {
-                return ctx.reply('⚠️ Tidak ada akun yang valid (harus mengandung email @). Silakan ketik format <code>email|pass|token|id</code> atau <code>email|pass</code> atau ketik /cancel.', { parse_mode: 'HTML' });
-            }
-            return saveCanvaAccounts(ctx, validAccounts, state.mode);
         }
 
         // Handler untuk input link undangan pada mode Daftar + Join
@@ -2837,7 +2023,6 @@ function mulaiBot() {
                     parse_mode: 'HTML',
                     ...Markup.inlineKeyboard([
                         [Markup.button.callback('➕ Tambah ke GSuite (Append)', 'save_pending_append')],
-                        [Markup.button.callback('🎨 Simpan ke Antrean Canva', 'save_pending_canva')],
                         [Markup.button.callback('🔄 Ganti Semua GSuite (Replace)', 'save_pending_replace')],
                         [Markup.button.callback('❌ Abaikan / Batal', 'cancel_pending')],
                     ])
@@ -2885,11 +2070,6 @@ function mulaiBot() {
                 );
             }
 
-            if (state && state.step === 'waiting_canva_accounts') {
-                delete userState[ctx.chat.id];
-                return saveCanvaAccounts(ctx, validAccounts, state.mode);
-            }
-
             pendingInput[ctx.chat.id] = validAccounts;
             return ctx.reply(
                 `📁 <b>File ${escapeHtml(doc.file_name || 'dokumen')} diterima (${validAccounts.length} akun)!</b>\n\n` +
@@ -2898,7 +2078,6 @@ function mulaiBot() {
                     parse_mode: 'HTML',
                     ...Markup.inlineKeyboard([
                         [Markup.button.callback('➕ Tambah ke GSuite (Append)', 'save_pending_append')],
-                        [Markup.button.callback('🎨 Simpan ke Antrean Canva', 'save_pending_canva')],
                         [Markup.button.callback('🔄 Ganti Semua GSuite (Replace)', 'save_pending_replace')],
                         [Markup.button.callback('❌ Abaikan / Batal', 'cancel_pending')],
                     ])
@@ -3220,9 +2399,9 @@ function mulaiBot() {
     bot.launch()
         .then(() => {
             bot.telegram.setMyCommands([
-                { command: 'start', description: '🏠 Menu Utama Bot' },
-                { command: 'capcut', description: '🎬 Buka Menu CapCut Automation' },
-                { command: 'canva', description: '🎨 Buka Menu Canva Automation' },
+                { command: 'start', description: '🏠 Menu Utama CapCut Automation' },
+                { command: 'daftar', description: '✨ Daftar Akun CapCut Baru' },
+                { command: 'join', description: '👥 Menu Join Tim CapCut' },
                 { command: 'mode', description: '🌐 Pengaturan Mode Browser' },
                 { command: 'restart', description: '🔄 Restart Server Pterodactyl' },
                 { command: 'batal', description: '❌ Batalkan Input Saat Ini' },
