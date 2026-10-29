@@ -205,7 +205,7 @@ function mulaiBot() {
         return Markup.inlineKeyboard([
             [
                 Markup.button.callback('👥 Mulai TEAM (5 Seats)', 'plan_team'),
-                Markup.button.callback('💎 Mulai PRO (7 Hari)', 'plan_pro'),
+                Markup.button.callback('💎 Mulai PRO (Rp14.500)', 'plan_pro'),
             ],
             [
                 Markup.button.callback('✨ Daftar Akun CapCut Baru', 'menu_daftar_capcut'),
@@ -516,7 +516,7 @@ function mulaiBot() {
         ]);
 
         let modeLabel = `👥 TEAMS (${process.env['seats/kursi'] || '5'} Seats)`;
-        if (planMode === 'pro') modeLabel = '💎 PRO (7 Hari Trial)';
+        if (planMode === 'pro') modeLabel = '💎 PRO (Promo Rp14.500)';
         if (planMode === 'bind_only') modeLabel = '🔗 KAITKAN EMAIL SAJA';
         if (planMode === 'reset_password') modeLabel = `🔑 RESET PASSWORD (${process.env.new_password || 'masuk123'})`;
 
@@ -537,7 +537,7 @@ function mulaiBot() {
 
         const newPassEnv = process.env.new_password || 'masuk123';
         let modeLabel = `👥 TEAMS (${process.env['seats/kursi'] || '5'} Seats)`;
-        if (planMode === 'pro') modeLabel = '💎 PRO (7 Day Trial)';
+        if (planMode === 'pro') modeLabel = '💎 PRO (Promo Rp14.500)';
         if (planMode === 'bind_only') modeLabel = '🔗 KAITKAN EMAIL SAJA';
         if (planMode === 'reset_password') modeLabel = `🔑 RESET PASSWORD (${newPassEnv})`;
         if (planMode === 'register' || planMode === 'daftar') modeLabel = '✨ DAFTAR AKUN BARU CAPCUT';
@@ -676,8 +676,8 @@ function mulaiBot() {
                                 customTips = `\n💡 <b>Saran:</b> <i>Sistem Anti-Fraud CapCut (Shark WAF) mencekal checkout dari IP server ini (shark blocked). Hindari 'Tanpa proxy' di Pterodactyl. Gunakan proxy Residential / Mobile rotasi IP!</i>\n`;
                             } else if (fError.includes('INVALID_WORKSPACE')) {
                                 customTips = `\n💡 <b>Saran:</b> <i>Ruang tim tidak valid atau akun belum memiliki ruang kerja tim. Buka akun di browser dan pastikan ruang tim sudah terbuat.</i>\n`;
-                            } else if (fError.includes('PROMO_RP0_TIDAK_TERSEDIA')) {
-                                customTips = `\n💡 <b>Saran:</b> <i>Promo Pro 7 Hari Rp0 tidak tersedia pada akun ini (hanya harga normal). Bukti screenshot modal CapCut terlampir.</i>\n`;
+                            } else if (fError.includes('PROMO_14500_TIDAK_TERSEDIA') || fError.includes('PROMO_RP0_TIDAK_TERSEDIA')) {
+                                customTips = `\n💡 <b>Saran:</b> <i>Promo CapCut Pro Rp14.500 tidak tersedia pada akun ini (hanya harga normal). Bukti screenshot modal CapCut terlampir.</i>\n`;
                             }
 
                             const failCaption = `❌ <b>AKUN GAGAL DIPROSES</b>\n\n` +

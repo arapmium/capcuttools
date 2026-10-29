@@ -1679,9 +1679,9 @@ async function extractTeamsCashierLink(page, email = '') {
   throw err;
 }
 
-// ─── PLAN: PRO 7 DAY TRIAL ──────────────────────────────────────────────────
+// ─── PLAN: PRO RP14.500 (PROMO BULAN PERTAMA) ─────────────────────────────────
 async function extractProCashierLink(page, email = '') {
-  log('MODE', 'Mode: PRO (7 Day Trial)');
+  log('MODE', 'Mode: PRO (Promo Rp14.500)');
   await dismissPopups(page);
 
   let capturedCashierUrl = null;
@@ -1857,8 +1857,24 @@ async function extractProCashierLink(page, email = '') {
   await wait(800);
   await dismissAnnouncementPopups(page);
 
-  // ─── STEP 1.5: CEK KELAYAKAN PROMO RP0 & STATUS UNUSUAL ACTIVITY ─────────────
-  log('PRO', 'Menganalisis ketersediaan promo Free Trial Rp0 dan status akun...');
+  // Pastikan Tab "Monthly" / "Bulanan" aktif jika ada tab list
+  try {
+    await page.evaluate(() => {
+      const isVisible = el => !!(el && (el.offsetWidth || el.offsetHeight || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0)));
+      const tabCandidates = [...document.querySelectorAll('button, div, [role="tab"], span, a')].filter(el => {
+        if (!isVisible(el)) return false;
+        const t = (el.textContent || '').trim().toLowerCase();
+        return (t.startsWith('monthly') || t.startsWith('bulanan')) && (t.includes('89%') || t.includes('off') || t.includes('diskon') || t === 'monthly' || t === 'bulanan');
+      });
+      if (tabCandidates.length > 0) {
+        tabCandidates[0].click();
+      }
+    });
+    await wait(600);
+  } catch (_) {}
+
+  // ─── STEP 1.5: CEK KELAYAKAN PROMO RP14.500 & STATUS UNUSUAL ACTIVITY ─────────────
+  log('PRO', 'Menganalisis ketersediaan promo CapCut Pro Rp14.500 dan status akun...');
 
   const checkProEligibility = async () => {
     return await page.evaluate(() => {
@@ -1879,24 +1895,30 @@ async function extractProCashierLink(page, email = '') {
         }
       }
 
-      // 2. Cek card Pro dan ketersediaan harga Rp0
+      // 2. Cek card Pro dan ketersediaan harga promo Rp14.500
       const cards = [...document.querySelectorAll('div, section, article')].filter(el => {
         if (!isVisible(el)) return false;
         const txt = (el.textContent || '').toLowerCase();
         return txt.includes('pro') && !txt.includes('ultra') && !txt.includes('teams') && !txt.includes('per kursi') && !txt.includes('per seat');
       });
 
+      let has14500 = false;
       let hasRp0 = false;
       for (const card of cards) {
         const txt = (card.textContent || '').toLowerCase();
+        if (/14[.,\s]?500/i.test(txt) || /first month|bulan pertama/i.test(txt)) {
+          has14500 = true;
+          break;
+        }
         if (txt.includes('rp0') || txt.includes('rp 0') || txt.includes('0 for 7 days') || txt.includes('0 selama 7 hari') || txt.includes('gratis 7 hari') || txt.includes('7 days free') || txt.includes('free for 7') || txt.includes('trial 7 hari')) {
           hasRp0 = true;
-          break;
         }
       }
 
-      if (!hasRp0) {
-        if (/rp\s*0\b|0\s*for\s*7\s*days|gratis\s*7\s*hari|free\s*for\s*7\s*days/i.test(bodyText)) {
+      if (!has14500 && !hasRp0) {
+        if (/14[.,\s]?500/i.test(bodyText)) {
+          has14500 = true;
+        } else if (/rp\s*0\b|0\s*for\s*7\s*days|gratis\s*7\s*hari|free\s*for\s*7\s*days/i.test(bodyText)) {
           hasRp0 = true;
         }
       }
@@ -1904,13 +1926,14 @@ async function extractProCashierLink(page, email = '') {
       return {
         hasUnusual,
         unusualMsg: unusualMsg || (hasUnusual ? "We've noticed some unusual activity in your account. To protect security, you can't proceed for the moment." : ''),
+        has14500,
         hasRp0
       };
     });
   };
 
   let eligibility = await checkProEligibility();
-  if (!eligibility.hasRp0 && !eligibility.hasUnusual) {
+  if (!eligibility.has14500 && !eligibility.hasRp0 && !eligibility.hasUnusual) {
     log('WAIT', 'Menunggu 2 detik tambahan untuk rendering harga modal...');
     await wait(2000);
     eligibility = await checkProEligibility();
@@ -1925,16 +1948,20 @@ async function extractProCashierLink(page, email = '') {
     throw err;
   }
 
-  // 2. Jika promo Rp0 TIDAK ADA
-  if (!eligibility.hasRp0) {
-    log('WARN', '⚠️ Promo Pro 7 Hari Rp0 TIDAK TERSEDIA pada akun ini (Hanya harga normal/tanpa trial).');
-    const ssPath = await takeDiagnosticScreenshot(page, 'no_rp0', email);
-    const err = new Error('PROMO_RP0_TIDAK_TERSEDIA: Promo Pro 7 Hari Rp0 tidak tersedia pada akun ini (Hanya harga normal/tanpa trial).');
+  // 2. Jika promo Rp14.500 TIDAK ADA
+  if (!eligibility.has14500 && !eligibility.hasRp0) {
+    log('WARN', '⚠️ Promo CapCut Pro Rp14.500 TIDAK TERSEDIA pada akun ini (Hanya harga normal/tanpa promo).');
+    const ssPath = await takeDiagnosticScreenshot(page, 'no_promo_14500', email);
+    const err = new Error('PROMO_14500_TIDAK_TERSEDIA: Promo Pro Rp14.500 tidak tersedia pada akun ini (Hanya harga normal/tanpa promo).');
     err.screenshotPath = ssPath;
     throw err;
   }
 
-  log('OK', '✓ Promo Pro 7 Hari Rp0 TERDETEKSI aktif dan siap diambil!');
+  if (eligibility.has14500) {
+    log('OK', '✓ Promo CapCut Pro Rp14.500 TERDETEKSI aktif dan siap diambil!');
+  } else {
+    log('OK', '✓ Promo CapCut Pro Rp0 / Trial TERDETEKSI aktif dan siap diambil!');
+  }
 
   // Step 2: Cari card Pro dan klik Upgrade di dalamnya
   log('CLICK', 'Mencari card PRO dan klik Upgrade...');
@@ -1944,8 +1971,18 @@ async function extractProCashierLink(page, email = '') {
     await dismissAnnouncementPopups(page);
     let clicked = false;
 
-    // 0. Scroll modal content down agar tombol kartu Pro yang berada di bawah teks terlihat jelas
+    // 0. Pastikan Tab Monthly aktif dan scroll modal agar tombol Pro terlihat jelas
     await page.evaluate(() => {
+      const isVisible = el => !!(el && (el.offsetWidth || el.offsetHeight || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0)));
+      const tabCandidates = [...document.querySelectorAll('button, div, [role="tab"], span, a')].filter(el => {
+        if (!isVisible(el)) return false;
+        const t = (el.textContent || '').trim().toLowerCase();
+        return (t.startsWith('monthly') || t.startsWith('bulanan')) && (t.includes('89%') || t.includes('off') || t.includes('diskon') || t === 'monthly' || t === 'bulanan');
+      });
+      if (tabCandidates.length > 0) {
+        try { tabCandidates[0].click(); } catch (_) {}
+      }
+
       const modal = document.querySelector('div[role="dialog"], [class*="modal"], [class*="Modal"], [class*="dialog"]') || document.body;
       const all = [modal, ...modal.querySelectorAll('*')];
       for (const el of all) {
@@ -1956,7 +1993,7 @@ async function extractProCashierLink(page, email = '') {
     }).catch(() => {});
     await wait(300);
 
-    // 1. Evaluasi DOM Langsung: Cari Card Pro (memuat 'Pro' + 'selama 7 hari' / '7 days', BUKAN 'Ultra', BUKAN 'Tim', BUKAN 'Gratis dasar')
+    // 1. Evaluasi DOM Langsung: Cari Card Pro (memuat 'Pro' + '14,500' / '14.500' / '144,000' / 'first month' / 'bulan pertama', BUKAN 'Ultra', BUKAN 'Teams/Tim', BUKAN 'Current plan/Free')
     try {
       const evalResult = await page.evaluate(() => {
         const isVisible = el => !!(el && (el.offsetWidth || el.offsetHeight || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0)));
@@ -1983,18 +2020,18 @@ async function extractProCashierLink(page, email = '') {
         // Cari semua container card di dalam pricing modal
         // Card 2 Pro memiliki ciri khas:
         // - Mengandung teks "Pro"
-        // - Mengandung teks "selama 7 hari" atau "7 days" atau "7 hari"
+        // - Mengandung teks "14,500" / "14.500" / "14500" / "144,000" / "144.000" / "first month" / "bulan pertama" / "selama 7 hari" / "7 days"
         // - TIDAK mengandung "Ultra" (Card 3)
-        // - TIDAK mengandung "Tim" atau "per kursi" (Card 4)
-        // - TIDAK mengandung "fitur dasar" (Card 1 Gratis)
+        // - TIDAK mengandung "Tim" atau "Teams" atau "per kursi" / "per seat" (Card 4)
+        // - TIDAK mengandung "current plan" / "paket saat ini" (Card 1 Gratis)
         const allCandidates = [...root.querySelectorAll('div, section, article')].filter(el => {
           if (!isVisible(el)) return false;
           if (el.offsetWidth > 600 || el.offsetHeight < 80) return false;
           const t = (el.textContent || '').toLowerCase();
           const hasPro = t.includes('pro');
-          const hasTrial = t.includes('selama 7 hari') || t.includes('7 days') || t.includes('7 hari') || t.includes('trial');
-          const isNotOthers = !t.includes('ultra') && !t.includes('tim') && !t.includes('per kursi') && !t.includes('fitur dasar');
-          return hasPro && hasTrial && isNotOthers;
+          const hasPromoOrPrice = /14[.,\s]?500/i.test(t) || t.includes('144,000') || t.includes('144.000') || t.includes('first month') || t.includes('bulan pertama') || t.includes('selama 7 hari') || t.includes('7 days') || t.includes('500 monthly ai credits') || t.includes('500 kredit');
+          const isNotOthers = !t.includes('ultra') && !t.includes('tim') && !t.includes('teams') && !t.includes('per kursi') && !t.includes('per seat') && !t.includes('current plan') && !t.includes('paket saat ini');
+          return hasPro && hasPromoOrPrice && isNotOthers;
         });
 
         // Loop dari card terdalam
@@ -2011,7 +2048,7 @@ async function extractProCashierLink(page, email = '') {
           if (btns.length > 0) {
             const ctaBtn = btns.find(b => {
               const bTxt = (b.textContent || '').trim().toLowerCase();
-              return bTxt.includes('coba') || bTxt.includes('gratis') || bTxt.includes('trial') || bTxt.includes('tingkatkan') || bTxt.includes('upgrade') || bTxt.includes('mulai');
+              return bTxt.includes('upgrade') || bTxt.includes('tingkatkan') || bTxt.includes('coba') || bTxt.includes('mulai') || bTxt.includes('get pro');
             }) || btns[0];
 
             mc(ctaBtn);
@@ -2019,22 +2056,26 @@ async function extractProCashierLink(page, email = '') {
           }
         }
 
-        // Fallback: Cari elemen teks "selama 7 hari" dan telusuri tombol di parent container-nya
-        const trialTextEls = [...root.querySelectorAll('*')].filter(el => {
+        // Fallback: Cari elemen teks harga Rp14,500 / Rp14.500 dan telusuri tombol di parent container-nya
+        const priceEls = [...root.querySelectorAll('*')].filter(el => {
           if (!isVisible(el)) return false;
           const t = (el.textContent || '').trim().toLowerCase();
-          return t === 'selama 7 hari' || t === '7 days' || t.includes('selama 7 hari');
+          return /14[.,\s]?500/i.test(t) && !t.includes('ultra') && !t.includes('teams') && !t.includes('tim');
         });
 
-        for (const tEl of trialTextEls) {
-          let p = tEl.parentElement;
+        for (const pEl of priceEls) {
+          let p = pEl.parentElement;
           for (let depth = 0; depth < 8; depth++) {
             if (!p || p === root || p === document.body) break;
             if (p.offsetWidth > 600) { p = p.parentElement; continue; }
             const btns = [...p.querySelectorAll('button, [role="button"], a')].filter(b => isVisible(b));
             if (btns.length > 0) {
-              mc(btns[0]);
-              return { ok: true, text: btns[0].textContent?.trim(), tag: btns[0].tagName, method: 'trial-parent-button' };
+              const b = btns.find(btn => {
+                const bTxt = (btn.textContent || '').trim().toLowerCase();
+                return bTxt.includes('upgrade') || bTxt.includes('tingkatkan') || bTxt.includes('coba');
+              }) || btns[0];
+              mc(b);
+              return { ok: true, text: b.textContent?.trim(), tag: b.tagName, method: 'price-parent-button' };
             }
             p = p.parentElement;
           }
@@ -2053,48 +2094,54 @@ async function extractProCashierLink(page, email = '') {
     if (!clicked) {
       try {
         const modalLocator = page.locator('div[role="dialog"], [class*="modal"], [class*="Modal"]').filter({ hasNotText: 'Kabar terbaru' }).first();
-        // Target card yang memiliki teks "selama 7 hari" dan "Pro" dan TIDAK memiliki "Ultra"
+        // Target card yang memiliki teks "Pro" dan "14,500" / "14.500" dan TIDAK memiliki "Ultra" / "Teams"
         const cardLocator = modalLocator.locator('div, section, article')
-          .filter({ hasText: /selama 7 hari|7 days/i })
-          .filter({ hasNotText: /ultra|per kursi|fitur dasar/i })
+          .filter({ hasText: /Pro/i })
+          .filter({ hasText: /14[.,\s]?500|144[.,\s]?000|first month|bulan pertama/i })
+          .filter({ hasNotText: /ultra|teams|tim|per kursi|per seat|current plan|paket saat ini/i })
           .first();
 
-        const btnLocator = cardLocator.locator('button, [role="button"], a').first();
+        const btnLocator = cardLocator.locator('button, [role="button"], a').filter({ hasText: /upgrade|tingkatkan/i }).first();
         if (await btnLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
           await btnLocator.scrollIntoViewIfNeeded().catch(() => {});
           await btnLocator.click({ force: true, timeout: 3000 });
           clicked = true;
-          log('OK', 'Klik tombol Pro via Playwright Native Locator di dalam Card Pro');
+          log('OK', 'Klik tombol Pro via Playwright Native Locator di dalam Card Pro (Rp14.500)');
         }
       } catch (_) {}
     }
 
-    // 3. Fallback teks tombol uji coba (Coba gratis / Coba sekarang / Tingkatkan)
+    // 3. Fallback teks tombol Upgrade pada Card Pro (hindari Ultra dan Teams)
     if (!clicked) {
       const proButtonSelectors = [
+        'button:has-text("Upgrade")',
+        'button:has-text("Tingkatkan")',
+        '[role="button"]:has-text("Upgrade")',
+        '[role="button"]:has-text("Tingkatkan")',
         'button:has-text("Coba gratis")',
-        'button:has-text("Coba 7 hari gratis")',
-        'button:has-text("Coba gratis 7 hari")',
-        'button:has-text("Uji coba gratis")',
-        'button:has-text("Coba Pro")',
-        'button:has-text("Coba sekarang")',
-        '[role="button"]:has-text("Coba gratis")',
-        '[role="button"]:has-text("Coba sekarang")',
-        'button:has-text("Try for free")',
-        'button:has-text("Start free trial")',
-        'button:has-text("Start trial")'
+        'button:has-text("Coba sekarang")'
       ];
 
       for (const sel of proButtonSelectors) {
         try {
-          const loc = page.locator(sel).first();
-          if (await loc.isVisible({ timeout: 1500 }).catch(() => false)) {
-            await loc.scrollIntoViewIfNeeded().catch(() => {});
-            await loc.click({ force: true, timeout: 3000 });
-            clicked = true;
-            log('OK', `Klik tombol Pro via Native Locator: ${sel}`);
-            break;
+          const loc = page.locator(sel);
+          const count = await loc.count();
+          for (let i = 0; i < count; i++) {
+            const btn = loc.nth(i);
+            const parentText = await btn.evaluate(el => el.closest('div, section, article')?.textContent || '').catch(() => '');
+            const pLower = parentText.toLowerCase();
+            if (pLower.includes('ultra') || pLower.includes('teams') || pLower.includes('tim') || pLower.includes('per kursi') || pLower.includes('per seat')) {
+              continue; // lewati Ultra dan Teams
+            }
+            if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
+              await btn.scrollIntoViewIfNeeded().catch(() => {});
+              await btn.click({ force: true, timeout: 3000 });
+              clicked = true;
+              log('OK', `Klik tombol Pro via Native Locator: ${sel} (index ${i})`);
+              break;
+            }
           }
+          if (clicked) break;
         } catch (_) {}
       }
     }
@@ -4210,7 +4257,7 @@ async function main() {
   console.log('======================================================');
   console.log('               BOT CAPCUT AUTOMATION                  ');
   console.log('                     t.me/Drosek                      ');
-  let planSubtitle = ' (7 Day Trial)';
+  let planSubtitle = ' (Rp14.500)';
   if (PLAN_MODE.includes('team')) planSubtitle = ` | Target: ${TARGET_SEATS} Seats`;
   else if (PLAN_MODE === 'register' || PLAN_MODE === 'daftar') planSubtitle = ` (Daftar Akun Baru @${TMAIL_DOMAIN})`;
   else if (PLAN_MODE === 'daftar_join') planSubtitle = ` (Daftar Akun Baru + Join Tim)`;

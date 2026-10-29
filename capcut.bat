@@ -76,7 +76,7 @@ echo -------------------------------------------------------------------------
 echo  PILIH MODE EKSEKUSI CAPCUT:
 echo -------------------------------------------------------------------------
 echo  [1] Mode TEAM - CapCut Team Seats (Default 5 Kursi)
-echo  [2] Mode PRO - CapCut Pro 7-Day Trial Free Rp0
+echo  [2] Mode PRO - CapCut Pro Diskon Rp14.500 (Bulan Pertama)
 echo  [3] Mode DAFTAR Akun Baru (@arapmium.web.id)
 echo  [4] Mode DAFTAR + JOIN Tim CapCut
 echo  [5] Mode LOGIN + JOIN Tim CapCut
@@ -112,7 +112,7 @@ goto TAHAP_JUMLAH_AKUN
 
 :SET_PRO
 set "planmode=pro"
-set "MODE_LABEL=MODE PRO (CapCut Pro 7 Day Trial)"
+set "MODE_LABEL=MODE PRO (CapCut Pro Rp14.500)"
 goto TAHAP_JUMLAH_AKUN
 
 :SET_DAFTAR
