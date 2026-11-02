@@ -854,9 +854,138 @@ async function loginGoogle(page, email, password) {
 }
 
 
+// ─── DISMISS PROMO DISCOUNT POPUP ("PELAJARI SELENGKAPNYA" / "LEARN MORE") ───
+async function dismissPromoDiscountPopup(page) {
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      // 1. Cek locator Playwright terarah pada popup promo
+      try {
+        const promoModal = page.locator('div[role="dialog"], [class*="modal"], [class*="Modal"], section, aside, div')
+          .filter({ hasText: /pelajari selengkapnya|learn more|buka akses tanpa batas|akses ke semua fitur paket pro/i })
+          .filter({ hasText: /pro/i })
+          .first();
+
+        if (await promoModal.isVisible({ timeout: 800 }).catch(() => false)) {
+          const closeBtn = promoModal.locator('button[class*="close"], button[class*="Close"], span[class*="close"], span[class*="Close"], svg[class*="close"], svg[class*="Close"], div[class*="close"], .semi-modal-close, .semi-icon-close, .lv-modal-close, [aria-label*="close" i], [aria-label*="tutup" i]').first();
+          if (await closeBtn.isVisible({ timeout: 800 }).catch(() => false)) {
+            await closeBtn.click({ force: true, timeout: 2000 }).catch(() => {});
+            log('OK', 'Popup promo CapCut Pro (Pelajari selengkapnya) ditutup via locator close');
+            await wait(600);
+            continue;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Evaluasi DOM langsung: cari container popup promo, klik X di pojok kanan atas atau hilangkan dari DOM
+      const res = await page.evaluate(() => {
+        const isVisible = el => !!(el && (el.offsetWidth || el.offsetHeight || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0)));
+        const mc = el => {
+          if (!el) return;
+          try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch (_) {}
+          el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+          el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          if (typeof el.focus === 'function') el.focus();
+          el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+          el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          if (typeof el.click === 'function') el.click();
+        };
+
+        // Cari elemen dengan teks "Pelajari selengkapnya" atau "Learn more"
+        const promoBtnEls = [...document.querySelectorAll('*')].filter(el => {
+          if (!isVisible(el)) return false;
+          const t = (el.textContent || '').trim().toLowerCase();
+          return t === 'pelajari selengkapnya' || t === 'learn more' || t.includes('pelajari selengkapnya') || t.includes('buka akses tanpa batas');
+        });
+
+        if (promoBtnEls.length === 0) return null;
+
+        // Cari container dialog popup ini (bukan main pricing modal yang lebar 1000px+ dan memuat 4 paket)
+        let popupCard = null;
+        for (const pEl of promoBtnEls) {
+          let cur = pEl;
+          for (let d = 0; d < 12; d++) {
+            if (!cur || cur === document.body) break;
+            if (cur.offsetWidth >= 200 && cur.offsetWidth <= 650 && cur.offsetHeight >= 150 && cur.offsetHeight <= 700) {
+              const curText = (cur.textContent || '').toLowerCase();
+              if (!curText.includes('kursi') && !curText.includes('seats')) {
+                popupCard = cur;
+                break;
+              }
+            }
+            cur = cur.parentElement;
+          }
+          if (popupCard) break;
+        }
+
+        if (!popupCard) {
+          popupCard = promoBtnEls[0].closest('div[role="dialog"], [class*="modal"], [class*="card"]') || promoBtnEls[0].parentElement;
+        }
+
+        if (popupCard) {
+          // A. Cari icon close di dalam popup ini
+          const closeSelectors = [
+            'button[class*="close"]', 'button[class*="Close"]',
+            'span[class*="close"]', 'span[class*="Close"]',
+            'svg[class*="close"]', 'svg[class*="Close"]',
+            'div[class*="close"]', 'div[class*="Close"]',
+            '.semi-modal-close', '.lv-modal-close', '.semi-icon-close',
+            '[aria-label*="close" i]', '[aria-label*="tutup" i]'
+          ];
+          for (const sel of closeSelectors) {
+            const cb = popupCard.querySelector(sel);
+            if (cb && isVisible(cb)) {
+              mc(cb);
+              return `Close clicked via selector ${sel}`;
+            }
+          }
+
+          // B. Cari elemen X di pojok kanan atas kartu popup promo
+          const pRect = popupCard.getBoundingClientRect();
+          const children = [...popupCard.querySelectorAll('*')].filter(c => isVisible(c));
+          for (const c of children) {
+            const r = c.getBoundingClientRect();
+            if (r.right >= pRect.right - 80 && r.top <= pRect.top + 80 && r.width >= 6 && r.width <= 50 && r.height >= 6 && r.height <= 50) {
+              if ((c.textContent || '').trim().length <= 3 || c.querySelector('svg') || c.tagName.toLowerCase() === 'svg') {
+                mc(c);
+                return 'TopRight X clicked on promo popup';
+              }
+            }
+          }
+
+          // C. Jika tombol close tidak bereaksi, hapus popup dan backdrop mask-nya dari DOM
+          try {
+            const wrap = popupCard.closest('.semi-modal-wrap, [class*="modal-wrap"], [class*="dialog-wrap"]') || popupCard;
+            if (wrap.parentElement) {
+              const mask = wrap.parentElement.querySelector('.semi-modal-mask, [class*="modal-mask"]');
+              if (mask) mask.remove();
+            }
+            wrap.remove();
+            return 'Promo popup removed from DOM';
+          } catch (_) {
+            popupCard.style.display = 'none';
+            return 'Promo popup hidden';
+          }
+        }
+        return null;
+      });
+
+      if (res) {
+        log('OK', `Popup promo Pro berhasil ditutup/dibersihkan: ${res}`);
+        await wait(800);
+      } else {
+        break;
+      }
+    }
+  } catch (err) {
+    log('WARN', `Dismiss promo popup error: ${err.message}`);
+  }
+}
+
 // ─── DISMISS ANNOUNCEMENT & FEATURE POPUPS (KABAR TERBARU / GPT IMAGE / BANNER) ──
 async function dismissAnnouncementPopups(page) {
   try {
+    await dismissPromoDiscountPopup(page);
     for (let attempt = 0; attempt < 3; attempt++) {
       // 1. Coba tutup via Playwright Locator terarah pada popup pengumuman
       try {
@@ -1852,9 +1981,11 @@ async function extractProCashierLink(page, email = '') {
   await wait(3000);
   capturedCashierUrl = null;
 
-  // Tutup popup pengumuman seperti "Kabar terbaru" / "GPT Image" jika muncul di depan modal pricing
+  // Tutup popup pengumuman seperti "Kabar terbaru" / "GPT Image" / Promo Diskon jika muncul di depan modal pricing
+  await dismissPromoDiscountPopup(page);
   await dismissAnnouncementPopups(page);
   await wait(800);
+  await dismissPromoDiscountPopup(page);
   await dismissAnnouncementPopups(page);
 
   // Pastikan Tab "Monthly" / "Bulanan" aktif jika ada tab list
@@ -1899,7 +2030,9 @@ async function extractProCashierLink(page, email = '') {
       const cards = [...document.querySelectorAll('div, section, article')].filter(el => {
         if (!isVisible(el)) return false;
         const txt = (el.textContent || '').toLowerCase();
-        return txt.includes('pro') && !txt.includes('ultra') && !txt.includes('teams') && !txt.includes('per kursi') && !txt.includes('per seat');
+        // Abaikan popup promo "pelajari selengkapnya"
+        if (txt.includes('pelajari selengkapnya') || txt.includes('learn more')) return false;
+        return txt.includes('pro') && !txt.includes('ultra') && !txt.includes('creator ai') && !txt.includes('teams') && !txt.includes('tim') && !txt.includes('per kursi') && !txt.includes('per seat');
       });
 
       let has14500 = false;
@@ -1964,10 +2097,11 @@ async function extractProCashierLink(page, email = '') {
   }
 
   // Step 2: Cari card Pro dan klik Upgrade di dalamnya
-  log('CLICK', 'Mencari card PRO dan klik Upgrade...');
+  log('CLICK', 'Mencari card PRO dan klik tombol Tingkatkan / Upgrade...');
 
   const clickProUpgrade = async (label) => {
     log('CLICK', `Klik Upgrade PRO (${label})...`);
+    await dismissPromoDiscountPopup(page);
     await dismissAnnouncementPopups(page);
     let clicked = false;
 
@@ -1993,7 +2127,7 @@ async function extractProCashierLink(page, email = '') {
     }).catch(() => {});
     await wait(300);
 
-    // 1. Evaluasi DOM Langsung: Cari Card Pro (memuat 'Pro' + '14,500' / '14.500' / '144,000' / 'first month' / 'bulan pertama', BUKAN 'Ultra', BUKAN 'Teams/Tim', BUKAN 'Current plan/Free')
+    // 1. Evaluasi DOM Langsung: Cari Tombol Tingkatkan / Upgrade di Card Pro (Kolom 2)
     try {
       const evalResult = await page.evaluate(() => {
         const isVisible = el => !!(el && (el.offsetWidth || el.offsetHeight || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0)));
@@ -2017,67 +2151,114 @@ async function extractProCashierLink(page, email = '') {
         });
         const root = modals.length > 0 ? modals[0] : document.body;
 
-        // Cari semua container card di dalam pricing modal
-        // Card 2 Pro memiliki ciri khas:
-        // - Mengandung teks "Pro"
-        // - Mengandung teks "14,500" / "14.500" / "14500" / "144,000" / "144.000" / "first month" / "bulan pertama" / "selama 7 hari" / "7 days"
-        // - TIDAK mengandung "Ultra" (Card 3)
-        // - TIDAK mengandung "Tim" atau "Teams" atau "per kursi" / "per seat" (Card 4)
-        // - TIDAK mengandung "current plan" / "paket saat ini" (Card 1 Gratis)
-        const allCandidates = [...root.querySelectorAll('div, section, article')].filter(el => {
+        // ── STRATEGY 1: CARI KARTU PRO DI DALAM MODAL PRICING ──
+        // Kartu Pro memiliki ciri khas unik:
+        // - Berisi 'Pro' (atau '💎 Pro')
+        // - Berisi harga '14,500' / '14.500' / '14500' / '144,000' / 'bulan pertama' / 'first month'
+        // - BUKAN Ultra / Creator AI
+        // - BUKAN Tim / Teams / per kursi / per seat
+        // - BUKAN Gratis / Current plan / Paket saat ini
+        // - BUKAN popup promo "Pelajari selengkapnya" / "Learn more"
+        const proCardCandidates = [...root.querySelectorAll('div, section, article')].filter(el => {
           if (!isVisible(el)) return false;
-          if (el.offsetWidth > 600 || el.offsetHeight < 80) return false;
+          if (el.offsetWidth > 650 || el.offsetHeight < 100) return false;
           const t = (el.textContent || '').toLowerCase();
           const hasPro = t.includes('pro');
-          const hasPromoOrPrice = /14[.,\s]?500/i.test(t) || t.includes('144,000') || t.includes('144.000') || t.includes('first month') || t.includes('bulan pertama') || t.includes('selama 7 hari') || t.includes('7 days') || t.includes('500 monthly ai credits') || t.includes('500 kredit');
-          const isNotOthers = !t.includes('ultra') && !t.includes('tim') && !t.includes('teams') && !t.includes('per kursi') && !t.includes('per seat') && !t.includes('current plan') && !t.includes('paket saat ini');
-          return hasPro && hasPromoOrPrice && isNotOthers;
+          const hasPrice = /14[.,\s]?500/i.test(t) || t.includes('144,000') || t.includes('144.000') || t.includes('bulan pertama') || t.includes('first month');
+          const isNotUltra = !t.includes('ultra') && !t.includes('creator ai');
+          const isNotTeams = !t.includes('tim') && !t.includes('teams') && !t.includes('per kursi') && !t.includes('per seat');
+          const isNotGratis = !t.includes('current plan') && !t.includes('paket saat ini');
+          const isNotPopup = !t.includes('pelajari selengkapnya') && !t.includes('learn more');
+          return hasPro && hasPrice && isNotUltra && isNotTeams && isNotGratis && isNotPopup;
         });
 
-        // Loop dari card terdalam
-        for (const card of allCandidates) {
-          try { card.scrollIntoView({ block: 'center', inline: 'center' }); } catch (_) {}
-
+        for (const card of proCardCandidates) {
+          // Cari tombol Tingkatkan / Upgrade di dalam kartu Pro ini
           const btns = [...card.querySelectorAll('button, [role="button"], a, div[class*="btn"], div[class*="button"]')].filter(b => {
             if (!isVisible(b)) return false;
             const bTxt = (b.textContent || '').trim().toLowerCase();
-            if (bTxt === '' && b.querySelector('svg')) return false; // bukan icon close
-            return true;
+            return (bTxt === 'tingkatkan' || bTxt === 'upgrade' || bTxt.includes('tingkatkan') || bTxt.includes('upgrade') || bTxt.includes('pro')) &&
+                   !bTxt.includes('pelajari') && !bTxt.includes('learn') && !bTxt.includes('batal');
           });
 
           if (btns.length > 0) {
-            const ctaBtn = btns.find(b => {
-              const bTxt = (b.textContent || '').trim().toLowerCase();
-              return bTxt.includes('upgrade') || bTxt.includes('tingkatkan') || bTxt.includes('coba') || bTxt.includes('mulai') || bTxt.includes('get pro');
-            }) || btns[0];
-
-            mc(ctaBtn);
-            return { ok: true, text: ctaBtn.textContent?.trim(), tag: ctaBtn.tagName, method: 'pro-card-button' };
+            const targetBtn = btns[0];
+            mc(targetBtn);
+            return {
+              ok: true,
+              text: targetBtn.textContent?.trim(),
+              tag: targetBtn.tagName,
+              method: 'pro-card-container-btn'
+            };
           }
         }
 
-        // Fallback: Cari elemen teks harga Rp14,500 / Rp14.500 dan telusuri tombol di parent container-nya
+        // ── STRATEGY 2: POSITION-BASED DARI SEMUA TOMBOL TINGKATKAN / UPGRADE ──
+        // Pada pricing modal CapCut:
+        // Col 1 = Gratis (tombol disabled "Paket saat ini")
+        // Col 2 = Pro (tombol "Tingkatkan" / "Upgrade" PERTAMA)
+        // Col 3 = Ultra / Creator AI (tombol "Tingkatkan" / "Upgrade" KEDUA)
+        // Col 4 = Tim (tombol "Tingkatkan" / "Upgrade" KETIGA)
+        // Maka tombol "Tingkatkan" pertama yang bukan di dalam Tim atau Ultra adalah milik Kartu Pro!
+        const allUpgradeBtns = [...root.querySelectorAll('button, [role="button"], a, div[class*="btn"], div[class*="button"]')].filter(b => {
+          if (!isVisible(b)) return false;
+          const bTxt = (b.textContent || '').trim().toLowerCase();
+          if (bTxt !== 'tingkatkan' && bTxt !== 'upgrade' && !bTxt.includes('tingkatkan') && !bTxt.includes('upgrade')) return false;
+
+          // Pastikan bukan di Tim, bukan di Ultra, bukan di popup promo
+          let cur = b.parentElement;
+          for (let d = 0; d < 8; d++) {
+            if (!cur || cur === root) break;
+            const cText = (cur.textContent || '').toLowerCase();
+            if (cText.includes('tim') || cText.includes('teams') || cText.includes('per kursi') || cText.includes('per seat') || cText.includes('ultra') || cText.includes('creator ai') || cText.includes('pelajari selengkapnya')) {
+              return false;
+            }
+            cur = cur.parentElement;
+          }
+          return true;
+        });
+
+        if (allUpgradeBtns.length > 0) {
+          const firstProBtn = allUpgradeBtns[0];
+          mc(firstProBtn);
+          return {
+            ok: true,
+            text: firstProBtn.textContent?.trim(),
+            tag: firstProBtn.tagName,
+            method: 'first-pro-upgrade-btn'
+          };
+        }
+
+        // ── STRATEGY 3: TRAVERSAL DARI ELEMEN TEKS HARGA "14,500" ──
         const priceEls = [...root.querySelectorAll('*')].filter(el => {
           if (!isVisible(el)) return false;
-          const t = (el.textContent || '').trim().toLowerCase();
-          return /14[.,\s]?500/i.test(t) && !t.includes('ultra') && !t.includes('teams') && !t.includes('tim');
+          const t = (el.textContent || '').trim();
+          return /14[.,\s]?500/i.test(t) && !t.includes('pelajari') && !t.includes('ultra') && !t.includes('tim');
         });
 
         for (const pEl of priceEls) {
-          let p = pEl.parentElement;
-          for (let depth = 0; depth < 8; depth++) {
-            if (!p || p === root || p === document.body) break;
-            if (p.offsetWidth > 600) { p = p.parentElement; continue; }
-            const btns = [...p.querySelectorAll('button, [role="button"], a')].filter(b => isVisible(b));
+          let cur = pEl.parentElement;
+          for (let d = 0; d < 8; d++) {
+            if (!cur || cur === root || cur === document.body) break;
+            const cText = (cur.textContent || '').toLowerCase();
+            if (cText.includes('tim') || cText.includes('teams') || cText.includes('ultra') || cText.includes('pelajari')) break;
+
+            const btns = [...cur.querySelectorAll('button, [role="button"], a')].filter(b => {
+              if (!isVisible(b)) return false;
+              const bTxt = (b.textContent || '').trim().toLowerCase();
+              return bTxt === 'tingkatkan' || bTxt === 'upgrade' || bTxt.includes('tingkatkan') || bTxt.includes('upgrade');
+            });
+
             if (btns.length > 0) {
-              const b = btns.find(btn => {
-                const bTxt = (btn.textContent || '').trim().toLowerCase();
-                return bTxt.includes('upgrade') || bTxt.includes('tingkatkan') || bTxt.includes('coba');
-              }) || btns[0];
-              mc(b);
-              return { ok: true, text: b.textContent?.trim(), tag: b.tagName, method: 'price-parent-button' };
+              mc(btns[0]);
+              return {
+                ok: true,
+                text: btns[0].textContent?.trim(),
+                tag: btns[0].tagName,
+                method: 'price-traversal-btn'
+              };
             }
-            p = p.parentElement;
+            cur = cur.parentElement;
           }
         }
 
@@ -2086,64 +2267,50 @@ async function extractProCashierLink(page, email = '') {
 
       if (evalResult && evalResult.ok) {
         clicked = true;
-        log('OK', `Klik tombol Pro via DOM Card Target (${evalResult.text || evalResult.tag}, method: ${evalResult.method})`);
+        log('OK', `Klik tombol Pro via DOM (${evalResult.text || evalResult.tag}, method: ${evalResult.method})`);
       }
     } catch (_) {}
 
-    // 2. Playwright Native CDP Click pada tombol di dalam Pro Card
+    // 2. Playwright Native CDP Click pada tombol di dalam Pro Card (Dual Action)
+    try {
+      const modalLocator = page.locator('div[role="dialog"], [class*="modal"], [class*="Modal"]').filter({ hasNotText: 'Kabar terbaru' }).first();
+      // Target card yang memiliki teks "Pro" dan "14,500" / "14.500" dan TIDAK memiliki "Ultra" / "Teams" / "Pelajari"
+      const cardLocator = modalLocator.locator('div, section, article')
+        .filter({ hasText: /Pro/i })
+        .filter({ hasText: /14[.,\s]?500|144[.,\s]?000|bulan pertama|first month/i })
+        .filter({ hasNotText: /ultra|creator ai|teams|tim|per kursi|per seat|current plan|paket saat ini|pelajari selengkapnya/i })
+        .first();
+
+      const btnLocator = cardLocator.locator('button, [role="button"], a').filter({ hasText: /upgrade|tingkatkan/i }).first();
+      if (await btnLocator.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await btnLocator.scrollIntoViewIfNeeded().catch(() => {});
+        await btnLocator.click({ force: true, timeout: 3000 });
+        clicked = true;
+        log('OK', 'Klik tombol Pro via Playwright Native Locator (Tingkatkan/Upgrade Rp14.500)');
+      }
+    } catch (_) {}
+
+    // 3. Fallback: Klik tombol "Tingkatkan" / "Upgrade" pertama yang bukan milik Teams / Ultra
     if (!clicked) {
       try {
-        const modalLocator = page.locator('div[role="dialog"], [class*="modal"], [class*="Modal"]').filter({ hasNotText: 'Kabar terbaru' }).first();
-        // Target card yang memiliki teks "Pro" dan "14,500" / "14.500" dan TIDAK memiliki "Ultra" / "Teams"
-        const cardLocator = modalLocator.locator('div, section, article')
-          .filter({ hasText: /Pro/i })
-          .filter({ hasText: /14[.,\s]?500|144[.,\s]?000|first month|bulan pertama/i })
-          .filter({ hasNotText: /ultra|teams|tim|per kursi|per seat|current plan|paket saat ini/i })
-          .first();
-
-        const btnLocator = cardLocator.locator('button, [role="button"], a').filter({ hasText: /upgrade|tingkatkan/i }).first();
-        if (await btnLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await btnLocator.scrollIntoViewIfNeeded().catch(() => {});
-          await btnLocator.click({ force: true, timeout: 3000 });
-          clicked = true;
-          log('OK', 'Klik tombol Pro via Playwright Native Locator di dalam Card Pro (Rp14.500)');
+        const upgradeLocators = page.locator('button:has-text("Tingkatkan"), button:has-text("Upgrade"), [role="button"]:has-text("Tingkatkan"), [role="button"]:has-text("Upgrade")');
+        const count = await upgradeLocators.count();
+        for (let i = 0; i < count; i++) {
+          const btn = upgradeLocators.nth(i);
+          const parentText = await btn.evaluate(el => el.closest('div, section, article')?.textContent || '').catch(() => '');
+          const pLower = parentText.toLowerCase();
+          if (pLower.includes('ultra') || pLower.includes('creator ai') || pLower.includes('teams') || pLower.includes('tim') || pLower.includes('per kursi') || pLower.includes('per seat') || pLower.includes('pelajari')) {
+            continue; // lewati Ultra, Teams, dan promo popup
+          }
+          if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
+            await btn.scrollIntoViewIfNeeded().catch(() => {});
+            await btn.click({ force: true, timeout: 3000 });
+            clicked = true;
+            log('OK', `Klik tombol Tingkatkan Pro via Fallback Locator (index ${i})`);
+            break;
+          }
         }
       } catch (_) {}
-    }
-
-    // 3. Fallback teks tombol Upgrade pada Card Pro (hindari Ultra dan Teams)
-    if (!clicked) {
-      const proButtonSelectors = [
-        'button:has-text("Upgrade")',
-        'button:has-text("Tingkatkan")',
-        '[role="button"]:has-text("Upgrade")',
-        '[role="button"]:has-text("Tingkatkan")',
-        'button:has-text("Coba gratis")',
-        'button:has-text("Coba sekarang")'
-      ];
-
-      for (const sel of proButtonSelectors) {
-        try {
-          const loc = page.locator(sel);
-          const count = await loc.count();
-          for (let i = 0; i < count; i++) {
-            const btn = loc.nth(i);
-            const parentText = await btn.evaluate(el => el.closest('div, section, article')?.textContent || '').catch(() => '');
-            const pLower = parentText.toLowerCase();
-            if (pLower.includes('ultra') || pLower.includes('teams') || pLower.includes('tim') || pLower.includes('per kursi') || pLower.includes('per seat')) {
-              continue; // lewati Ultra dan Teams
-            }
-            if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) {
-              await btn.scrollIntoViewIfNeeded().catch(() => {});
-              await btn.click({ force: true, timeout: 3000 });
-              clicked = true;
-              log('OK', `Klik tombol Pro via Native Locator: ${sel} (index ${i})`);
-              break;
-            }
-          }
-          if (clicked) break;
-        } catch (_) {}
-      }
     }
 
     return clicked;
@@ -2174,6 +2341,7 @@ async function extractProCashierLink(page, email = '') {
   }
 
   // Bersihkan kembali popup jika muncul sebelum klik kedua
+  await dismissPromoDiscountPopup(page);
   await dismissAnnouncementPopups(page);
   await wait(500);
 
