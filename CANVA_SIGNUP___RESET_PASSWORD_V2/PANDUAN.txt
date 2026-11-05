@@ -1,0 +1,24 @@
+=================================================================
+   CANVA SIGNUP + RESET PASSWORD TOOL - PANDUAN PENGGUNAAN
+=================================================================
+
+LANGKAH AWAL:
+1. Jalankan INSTALL.bat (cukup sekali)
+2. Isi emails.txt dengan format:
+      email@outlook.com|passwordoutlook|refresh_token|client_id
+3. Edit .env:
+      - Isi CANVA_PASSWORD (password yang mau diset ke akun Canva)
+      - Isi outlook_api_key dengan API key dari outlookreader.my.id
+
+MENJALANKAN:
+   Klik START.bat  ATAU  python main.py
+
+MENU:
+   [1] Signup  - Daftar akun Canva baru dari emails.txt
+   [2] Reset   - Reset password akun Canva existing dari emails.txt
+
+OUTPUT HASIL:
+   result/sukses_signup.txt       - Akun signup berhasil
+   result/sukses_reset.txt        - Akun reset password berhasil
+
+=================================================================
