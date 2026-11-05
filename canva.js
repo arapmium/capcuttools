@@ -605,12 +605,6 @@ async function signupCanvaAccount(rawAccountLine, customPassword = '') {
 
     fs.appendFileSync(path.join(__dirname, 'akun_canva_terdaftar.txt'), `${email}|${targetPassword}
 `, 'utf8');
-    try {
-      const v2ResDir = path.join(__dirname, 'CANVA_SIGNUP___RESET_PASSWORD_V2', 'result');
-      if (!fs.existsSync(v2ResDir)) fs.mkdirSync(v2ResDir, { recursive: true });
-      fs.appendFileSync(path.join(v2ResDir, 'sukses_signup.txt'), `${email}|${targetPassword}
-`, 'utf8');
-    } catch (_) {}
 
     console.log(`###TELE_CANVA_REGISTER_SUCCESS###${email}###${targetPassword}###${finalUrl}###`);
 
@@ -804,12 +798,6 @@ async function resetPasswordCanvaAccount(rawAccountLine, newPassword = '') {
     // Simpan ke file akun_canva_reset.txt & CANVA_SIGNUP___RESET_PASSWORD_V2/result/sukses_reset.txt
     fs.appendFileSync(path.join(__dirname, 'akun_canva_reset.txt'), `${email}|${targetPassword}
 `, 'utf8');
-    try {
-      const v2ResDir = path.join(__dirname, 'CANVA_SIGNUP___RESET_PASSWORD_V2', 'result');
-      if (!fs.existsSync(v2ResDir)) fs.mkdirSync(v2ResDir, { recursive: true });
-      fs.appendFileSync(path.join(v2ResDir, 'sukses_reset.txt'), `${email}|${targetPassword}
-`, 'utf8');
-    } catch (_) {}
 
     console.log(`###TELE_CANVA_RESET_SUCCESS###${email}###${targetPassword}###`);
 
