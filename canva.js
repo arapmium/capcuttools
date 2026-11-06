@@ -78,17 +78,22 @@ async function launchCanvaBrowser(options = {}) {
   const proxyConfig = getProxyConfig();
   const proxyOption = proxyConfig ? { server: proxyConfig.server, username: proxyConfig.username, password: proxyConfig.password } : undefined;
 
+    // Ukuran browser portrait 480x900 (mengikuti referensi perangkat/komputer agar ringan & tidak memicu bot detection Canva)
+  const BROWSER_WIDTH = 480;
+  const BROWSER_HEIGHT = 900;
+
   const defaultChromiumArgs = [
     '--disable-blink-features=AutomationControlled',
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
-    '--disable-web-security',
-    '--disable-features=IsolateOrigins,site-per-process',
-    '--disable-popup-blocking',
-    '--ignore-certificate-errors',
-    '--allow-running-insecure-content',
-    '--start-maximized'
+    '--disable-save-password-bubble',
+    '--disable-offer-store-unmasked-wallet-cards',
+    '--disable-notifications',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-backgrounding-occluded-windows',
+    `--window-size=${BROWSER_WIDTH},${BROWSER_HEIGHT}`
   ];
 
   if (process.platform === 'linux') {
@@ -99,29 +104,24 @@ async function launchCanvaBrowser(options = {}) {
     defaultChromiumArgs.push('--no-proxy-server');
   }
 
-  // Penentuan mode Headless vs Non-Headless:
-  // 1. Jika HEADLESS di-set spesifik ('false' / 'true')
-  // 2. Jika di Windows (Laptop), default ke FALSE (tampak layar browser) kecuali diset HEADLESS=true
-  // 3. Jika di Linux/Pterodactyl tanpa display X11 ($DISPLAY), WAJIB TRUE agar tidak crash
+  // Penentuan mode Headless vs Non-Headless
   let isHeadless = true;
   if (process.env.HEADLESS !== undefined && process.env.HEADLESS !== '') {
     isHeadless = String(process.env.HEADLESS).toLowerCase() === 'true';
   } else if (process.platform === 'win32') {
-    isHeadless = false; // Di Laptop default NON-HEADLESS (terbuka jendela browser)
+    isHeadless = false; // Di Laptop default NON-HEADLESS (terbuka jendela portrait kecil)
   }
 
   if (process.platform === 'linux' && !process.env.DISPLAY) {
     isHeadless = true; // Paksa headless jika di server Linux/Pterodactyl tanpa GUI display
   }
 
-  log('BROWSER', `Mode browser: ${isHeadless ? 'HEADLESS (Background / Server Pterodactyl)' : 'NON-HEADLESS (Layar Browser Terbuka di Laptop)'}`);
+  log('BROWSER', `Mode browser: ${isHeadless ? 'HEADLESS (Background / Server Pterodactyl)' : `NON-HEADLESS (${BROWSER_WIDTH}x${BROWSER_HEIGHT} Portrait Sesuai Perangkat)`}`);
 
   const contextOptions = {
-    viewport: { width: 1280, height: 850 },
+    viewport: { width: BROWSER_WIDTH, height: BROWSER_HEIGHT },
     locale: 'id-ID',
     timezoneId: 'Asia/Jakarta',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    ignoreHTTPSErrors: true,
   };
 
   if (proxyOption) contextOptions.proxy = proxyOption;
@@ -272,7 +272,16 @@ async function hasCanvaRmsSecurityError(page) {
       ) {
         return true;
       }
-      return false;
+
+      // Deteksi banner kotak notifikasi merah / pink keamanan Canva
+      const redEls = Array.from(document.querySelectorAll('div, p, span, [role="alert"]')).filter(e => {
+        if (!e.getClientRects().length) return false;
+        const t = (e.innerText || '').toLowerCase();
+        if (t.length < 15 || t.length > 700) return false;
+        if (!t.includes('keamanan') && !t.includes('security') && !t.includes('verifikasi') && !t.includes('rrs-') && !t.includes('rms-')) return false;
+        return true;
+      });
+      return redEls.length > 0;
     });
   } catch (_) {
     return false;
@@ -281,7 +290,48 @@ async function hasCanvaRmsSecurityError(page) {
 
 async function clickCanvaModalBack(page) {
   try {
+    // 1. Coba klik via selector Playwright spesifik tombol back
+    const backSelectors = [
+      'button[aria-label*="kembali" i]',
+      'button[aria-label*="back" i]',
+      '[role="button"][aria-label*="kembali" i]',
+      '[role="button"][aria-label*="back" i]',
+      'button[data-testid*="back" i]',
+      'button:has-text("<")',
+      'button:has-text("‹")',
+      'button:has-text("←")',
+      'span:has-text("<")',
+      'svg[aria-label*="kembali" i]'
+    ];
+    for (const sel of backSelectors) {
+      try {
+        const el = page.locator(sel).first();
+        if (await el.isVisible({ timeout: 400 })) {
+          await el.click({ force: true });
+          return true;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Dispatch click dengan event pointer & mouse lengkap (sesuai referensi perangkat)
     return await page.evaluate(() => {
+      function dispatchClick(el) {
+        if (!el) return false;
+        try {
+          el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          el.focus();
+        } catch (_) {}
+        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
+          try {
+            el.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }));
+          } catch (_) {}
+        });
+        try {
+          if (typeof el.click === 'function') el.click();
+        } catch (_) {}
+        return true;
+      }
+
       const allElements = Array.from(document.querySelectorAll("button, [role='button'], a, svg, div[tabindex='0'], span[tabindex='0']"));
       for (const el of allElements) {
         if (!el.getClientRects().length) continue;
@@ -295,7 +345,7 @@ async function clickCanvaModalBack(page) {
           (['<', '‹', '←', '«'].includes(txt) && txt.length <= 2)
         ) {
           const target = el.closest('button, [role="button"], a') || el;
-          target.click();
+          dispatchClick(target);
           return true;
         }
       }
@@ -311,15 +361,15 @@ async function handleCanvaSecurityBackRetry(page, purpose = 'signup', maxRetries
     if (!(await hasCanvaRmsSecurityError(page))) return true;
     log('WARN', `[AUTO-FIX] Pesan keamanan merah (RMS/RRS) Canva terdeteksi (Percobaan ${attempt}/${maxRetries})! Mengklik '<' kembali...`);
     await clickCanvaModalBack(page);
-    await wait(1500);
+    await wait(1800);
     if (purpose === 'signup') {
-      const btn = page.locator('button:has-text("Lanjutkan"), button:has-text("Berikutnya"), button:has-text("Continue"), button:has-text("Buat akun Anda"), button:has-text("Buat akun")').first();
-      if (await btn.isVisible({ timeout: 2500 }).catch(() => false)) await btn.click({ force: true });
+      const btn = page.locator('button[type="submit"], button:has-text("Lanjutkan"), button:has-text("Berikutnya"), button:has-text("Continue"), button:has-text("Next"), button:has-text("Buat akun Anda"), button:has-text("Buat akun")').first();
+      if (await btn.isVisible({ timeout: 3500 }).catch(() => false)) await btn.click({ force: true });
     } else {
-      const btn = page.locator('button:has-text("Buat kata sandi"), button:has-text("Create password"), button:has-text("Atur kata sandi"), button:has-text("Set password"), button:has-text("Lanjutkan")').first();
-      if (await btn.isVisible({ timeout: 2500 }).catch(() => false)) await btn.click({ force: true });
+      const btn = page.locator('button[type="submit"], button:has-text("Buat kata sandi"), button:has-text("Create password"), button:has-text("Atur kata sandi"), button:has-text("Set password"), button:has-text("Lanjutkan")').first();
+      if (await btn.isVisible({ timeout: 3500 }).catch(() => false)) await btn.click({ force: true });
     }
-    await wait(2000);
+    await wait(2500);
     if (!(await hasCanvaRmsSecurityError(page))) {
       log('OK', '✓ Pesan keamanan merah (RMS/RRS) berhasil diatasi!');
       return true;
@@ -543,9 +593,13 @@ async function signupCanvaAccount(rawAccountLine, customPassword = '') {
     log('OTP', `[3/6] Menunggu OTP Canva baru di inbox ${email} via outlookreader.my.id...`);
     let acceptedOtp = null;
     for (let otpLoop = 1; otpLoop <= 3; otpLoop++) {
-      const otpResult = await waitForCanvaOtp(rawLine, 90, 1500, (p) => {
-        if (p.attempt % 4 === 0) {
+      const otpResult = await waitForCanvaOtp(rawLine, 90, 1500, async (p) => {
+        if (p.attempt % 3 === 0) {
           log('WAIT', `Polling OTP dari outlookreader (${p.elapsed}s/${p.maxWait}s)...`);
+          if (await hasCanvaRmsSecurityError(page)) {
+            log('WARN', '[AUTO-FIX] Pesan keamanan merah (RRS/RMS) Canva muncul saat menunggu OTP! Mengklik kembali & submit ulang...');
+            await handleCanvaSecurityBackRetry(page, 'signup', 2);
+          }
         }
       }, { baseline, excludeOtps: seenOtps, purpose: 'signup' });
 

@@ -301,7 +301,9 @@ async function waitForCanvaOtp(credentialLine, timeoutSeconds = 90, intervalMs =
     attempt++;
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     if (typeof onProgress === 'function') {
-      onProgress({ attempt, elapsed, maxWait: timeoutSeconds });
+      try {
+        await onProgress({ attempt, elapsed, maxWait: timeoutSeconds });
+      } catch (_) {}
     }
 
     try {
